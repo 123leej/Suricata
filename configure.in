@@ -1,0 +1,839 @@
+#TODO A better place for default CFLAGS?
+
+AC_INIT(configure.in)
+
+    AM_CONFIG_HEADER(config.h)
+    AM_INIT_AUTOMAKE(suricata, 1.0.0)
+
+    AC_LANG_C
+    AC_PROG_CC_C99
+    AC_PROG_LIBTOOL
+
+    AC_DEFUN([FAIL_MESSAGE],[
+            echo
+            echo
+            echo "**********************************************"
+            echo "  ERROR: unable to find" $1
+            echo "  checked in the following places"
+            for i in `echo $2`; do
+            echo "        $i"
+            done
+            echo "**********************************************"
+            echo
+            exit 1
+            ])
+
+    AC_DEFUN([LIBNET_FAIL_WARN],[
+            echo
+            echo "*************************************************************************"
+            echo "   Warning! libnet version 1.1.x could not be found in " $1
+            echo "   Reject keywords will not be supported."
+            echo "   If you require reject support plese install libnet 1.1.x. "
+            echo "   If libnet is not installed in a non-standard location please use the"
+            echo "   --with-libnet-includes and --with-libnet-libraries configure options"
+            echo "*************************************************************************"
+            echo
+            ])
+
+    dnl get gcc version
+    AC_MSG_CHECKING([gcc version])
+            gccver=$($CC -dumpversion)
+            gccvermajor=$(echo $gccver | cut -d . -f1)
+            gccverminor=$(echo $gccver | cut -d . -f2)
+            gccvernum=$(expr $gccvermajor "*" 100 + $gccverminor)
+    AC_MSG_RESULT($gccver)
+
+    if test "$gccvernum" -ge "400"; then
+            dnl gcc 4.0 or later
+            CFLAGS="$CFLAGS -Wextra"
+    else
+            CFLAGS="$CFLAGS -W"
+    fi
+
+    # remove optimization options that break our code
+    # VJ 2010/06/27: no-tree-pre added. It breaks ringbuffers code.
+    CFLAGS="$CFLAGS -Wall -fno-strict-aliasing -fno-tree-pre"
+    CFLAGS="$CFLAGS -Wno-unused-parameter"
+    CFLAGS="$CFLAGS -std=gnu99"
+
+# Checks for programs.
+    AC_PROG_AWK
+    AC_PROG_CC
+    AC_PROG_CPP
+    AC_PROG_INSTALL
+    AC_PROG_LN_S
+    AC_PROG_MAKE_SET
+
+    AC_PATH_PROG(HAVE_PKG_CONFIG, pkg-config, "no")
+    if test "$HAVE_PKG_CONFIG" = "no"; then
+    echo
+    echo "   ERROR! pkg-config not found, go get it  "
+    echo "   http://pkg-config.freedesktop.org/wiki/ "
+    echo "   or install from your distribution       "
+    echo
+    exit 1
+    fi
+
+# Checks for libraries.
+
+# Checks for header files.
+    AC_CHECK_HEADERS([arpa/inet.h inttypes.h limits.h netdb.h netinet/in.h poll.h signal.h stdint.h stdlib.h string.h syslog.h sys/prctl.h sys/socket.h sys/syscall.h sys/time.h unistd.h windows.h winsock2.h ws2tcpip.h])
+
+# Checks for typedefs, structures, and compiler characteristics.
+    AC_C_INLINE
+    AC_TYPE_PID_T
+    AC_TYPE_SIZE_T
+    AC_TYPE_INT32_T
+    AC_TYPE_UINT16_T
+    AC_TYPE_UINT32_T
+    AC_TYPE_UINT64_T
+    AC_TYPE_UINT8_T
+    AC_HEADER_STDBOOL
+
+# Checks for library functions.
+    AC_FUNC_MALLOC
+    AC_FUNC_REALLOC
+    AC_CHECK_FUNCS([gettimeofday memset strcasecmp strchr strdup strerror strncasecmp strtol strtoul])
+
+#check for os
+    AC_MSG_CHECKING([host os])
+
+    # If no host os was detected, try with uname
+	if test -z "$host" ; then
+	    host="`uname`"
+    fi
+    echo -n "installation for $host OS... \c"
+
+    case "$host" in
+	    *-*-*freebsd*)
+		    CFLAGS="${CFLAGS} -DOS_FREEBSD"
+                    CPPFLAGS="${CPPFLAGS} -I/usr/local/include -I/usr/local/include/libnet11"
+                    LDFLAGS="${LDFLAGS} -L/usr/local/lib -L/usr/local/lib/libnet11"
+                    ;;
+	   *darwin*|*Darwin*)
+                    CFLAGS="${CFLAGS} -DOS_DARWIN"
+                    CPPFLAGS="${CPPFLAGS} -I/opt/local/include"
+                    LDFLAGS="${LDFLAGS} -L/opt/local/lib"
+		    ;;
+           *-*-linux*)
+                    #for now do nothing
+                    ;;
+           *-*-mingw32*)
+                    CFLAGS="${CFLAGS} -DOS_WIN32"
+                    LDFLAGS="${LDFLAGS} -lws2_32"
+                    ;;
+	   *)
+		AC_MSG_WARN([unsupported OS this may or may not work])
+		;;
+    esac
+    AC_MSG_RESULT(ok)
+
+#Enable support for gcc compile time security options. There is no great way to do detection of valid cflags that I have found
+#AX_CFLAGS_GCC_OPTION don't seem to do a better job than the code below and are a pain because of extra m4 files etc.
+#These flags seem to be supported on CentOS 5+, Ubuntu 8.04+, and FedoreCore 11+
+#Options are taken from https://wiki.ubuntu.com/CompilerFlags
+    AC_ARG_ENABLE(gccprotect,
+           AS_HELP_STRING([--enable-gccprotect], [Detect and use gcc hardening options]),,[enable_gccprotect=no])
+
+    AS_IF([test "x$enable_gccprotect" = "xyes"], [
+        #buffer overflow protection
+        AC_MSG_CHECKING(for -fstack-protector)
+        TMPCFLAGS="${CFLAGS}"
+        CFLAGS="${CFLAGS} -fstack-protector"
+        AC_TRY_LINK(,,SECCFLAGS="${SECCFLAGS} -fstack-protector"
+        AC_MSG_RESULT(yes),
+        AC_MSG_RESULT(no))
+        CFLAGS="${TMPCFLAGS}"
+
+        #compile-time best-practices errors for certain libc functions, provides checks of buffer lengths and memory regions
+        AC_MSG_CHECKING(for -D_FORTIFY_SOURCE=2)
+        TMPCFLAGS="${CFLAGS}"
+        CFLAGS="${CFLAGS} -D_FORTIFY_SOURCE=2"
+        AC_TRY_COMPILE(,,SECCFLAGS="${SECCFLAGS} -D_FORTIFY_SOURCE=2"
+        AC_MSG_RESULT(yes),
+        AC_MSG_RESULT(no))
+        CFLAGS="${TMPCFLAGS}"
+
+        #compile-time warnings about misuse of format strings
+        AC_MSG_CHECKING(for -Wformat -Wformat-security)
+        TMPCFLAGS="${CFLAGS}"
+        CFLAGS="${CFLAGS} -Wformat -Wformat-security"
+        AC_TRY_COMPILE(,,SECCFLAGS="${SECCFLAGS} -Wformat -Wformat-security"
+        AC_MSG_RESULT(yes),
+        AC_MSG_RESULT(no))
+        CFLAGS="${TMPCFLAGS}"
+
+        #provides a read-only relocation table area in the final ELF
+        AC_MSG_CHECKING(for -z relro)
+        TMPLDFLAGS="${LDFLAGS}"
+        LDFLAGS="${LDFLAGS} -z relro"
+        AC_TRY_LINK(,,SECLDFLAGS="${SECLDFLAGS} -z relro"
+        AC_MSG_RESULT(yes),
+        AC_MSG_RESULT(no))
+        LDFLAGS="${TMPLDFLAGS}"
+
+        #forces all relocations to be resolved at run-time
+        AC_MSG_CHECKING(for -z now)
+        TMPLDFLAGS="${LDFLAGS}"
+        LDFLAGS="${LDFLAGS} -z now"
+        AC_TRY_LINK(,,SECLDFLAGS="${SECLDFLAGS} -z now"
+        AC_MSG_RESULT(yes),
+        AC_MSG_RESULT(no))
+        LDFLAGS="${TMPLDFLAGS}"
+
+        CFLAGS="${CFLAGS} ${SECCFLAGS}"
+        LDFLAGS="${LDFLAGS} ${SECLDFLAGS}"
+    ])
+
+#enable profile generation
+    AC_ARG_ENABLE(gccprofile,
+           AS_HELP_STRING([--enable-gccprofile], [Enable gcc profile info i.e -pg flag is set]),,[enable_gccprofile=no])
+    AS_IF([test "x$enable_gccprofile" = "xyes"], [
+        CFLAGS="${CFLAGS} -pg"
+    ])
+
+#enable gcc march=native gcc 4.2 or later
+    AC_ARG_ENABLE(gccmarch_native,
+           AS_HELP_STRING([--enable-gccmarch-native], [Enable gcc march=native gcc 4.2 and later only]),,[enable_gccmarch_native=yes])
+    AS_IF([test "x$enable_gccmarch_native" = "xyes"], [
+        case $host in
+	    *darwin*|*Darwin*)
+		if test "$gccvernum" -ge "403"; then
+                    dnl gcc 4.3 or later
+                    CFLAGS="$CFLAGS -march=native"
+		else
+		    enable_gccmarch_native=no
+		fi
+		;;
+	    *)
+		if test "$gccvernum" -ge "402"; then
+                    dnl gcc 4.2 or later
+                    CFLAGS="$CFLAGS -march=native"
+		fi
+		;;
+	esac
+    ])
+
+#libpcre
+    AC_ARG_WITH(libpcre_includes,
+            [  --with-libpcre-includes=DIR  libpcre include directory],
+            [with_libpcre_includes="$withval"],[with_libpcre_includes=no])
+    AC_ARG_WITH(libpcre_libraries,
+            [  --with-libpcre-libraries=DIR    libpcre library directory],
+            [with_libpcre_libraries="$withval"],[with_libpcre_libraries="no"])
+
+    if test "$with_libpcre_includes" != "no"; then
+    CPPFLAGS="${CPPFLAGS} -I${with_libpcre_includes}"
+    fi
+
+    AC_CHECK_HEADER(pcre.h,,[AC_ERROR(pcre.h not found ...)])
+
+    if test "$with_libpcre_libraries" != "no"; then
+    LDFLAGS="${LDFLAGS}  -L${with_libpcre_libraries}"
+    fi
+
+    PCRE=""
+    AC_CHECK_LIB(pcre, pcre_get_substring,, PCRE="no")
+
+    if test "$PCRE" = "no"; then
+    echo
+    echo "   ERROR!  pcre library not found, go get it"
+    echo "   from www.pcre.org."
+    echo
+    exit 1
+    fi
+
+   # To prevent duping the lib link we reset LIBS after this check. Setting action-if-found to NULL doesn't seem to work
+   # see: http://blog.flameeyes.eu/2008/04/29/i-consider-ac_check_lib-harmful
+   PCRE=""
+   TMPLIBS="${LIBS}"
+   AC_CHECK_LIB(pcre, pcre_dfa_exec,, PCRE="no")
+   if test "$PCRE" = "no"; then
+   echo
+   echo "   ERROR!  pcre library was found but version was < 6.0"
+   echo "   please upgrade to a newer version of pcre which you can get from"
+   echo "   www.pcre.org."
+   echo
+   exit 1
+   fi
+   LIBS="${TMPLIBS}"
+
+   AC_TRY_COMPILE([ #include <pcre.h> ],
+   [ int eo = 0; eo |= PCRE_EXTRA_MATCH_LIMIT_RECURSION; ],
+   [ pcre_match_limit_recursion_available=yes ], [:]
+   )
+   if test "$pcre_match_limit_recursion_available" != "yes"; then
+    CFLAGS="${CFLAGS} -DNO_PCRE_MATCH_RLIMIT"
+    echo
+    echo "   Warning! pcre extra opt PCRE_EXTRA_MATCH_LIMIT_RECURSION not found"
+    echo "   This could lead to potential DoS please upgrade to pcre >= 6.5"
+    echo "   Continuing for now...."
+    echo "   from www.pcre.org."
+    echo
+   fi
+
+#libyaml
+    AC_ARG_WITH(libyaml_includes,
+            [  --with-libyaml-includes=DIR  libyaml include directory],
+            [with_libyaml_includes="$withval"],[with_libyaml_includes=no])
+    AC_ARG_WITH(libyaml_libraries,
+            [  --with-libyaml-libraries=DIR    libyaml library directory],
+            [with_libyaml_libraries="$withval"],[with_libyaml_libraries="no"])
+
+    if test "$with_libyaml_includes" != "no"; then
+    CPPFLAGS="${CPPFLAGS} -I${with_libyaml_includes}"
+    fi
+
+    AC_CHECK_HEADER(yaml.h,,LIBYAML="no")
+
+    if test "$with_libyaml_libraries" != "no"; then
+    LDFLAGS="${LDFLAGS}  -L${with_libyaml_libraries}"
+    fi
+
+    LIBYAML=""
+    AC_CHECK_LIB(yaml,yaml_parser_initialize,,LIBYAML="no")
+
+    if test "$LIBYAML" = "no"; then
+    echo
+    echo "   ERROR!  libyaml library not found, go get it"
+    echo "   from http://pyyaml.org/wiki/LibYAML."
+    echo "   or check your package manager."
+    echo
+    exit 1
+    fi
+
+#libpthread
+    AC_ARG_WITH(libpthread_includes,
+            [  --with-libpthread-includes=DIR  libpthread include directory],
+            [with_libpthread_includes="$withval"],[with_libpthread_includes=no])
+    AC_ARG_WITH(libpthread_libraries,
+            [  --with-libpthread-libraries=DIR    libpthread library directory],
+            [with_libpthread_libraries="$withval"],[with_libpthread_libraries="no"])
+
+    if test "$with_libpthread_includes" != "no"; then
+    CPPFLAGS="${CPPFLAGS} -I${with_libpthread_includes}"
+    fi
+
+    dnl AC_CHECK_HEADER(pthread.h,,[AC_ERROR(pthread.h not found ...)])
+
+    if test "$with_libpthread_libraries" != "no"; then
+    LDFLAGS="${LDFLAGS}  -L${with_libpthread_libraries}"
+    fi
+
+    PTHREAD=""
+    AC_CHECK_LIB(pthread, pthread_create,, PTHREAD="no")
+
+    if test "$PTHREAD" = "no"; then
+    echo
+    echo "   ERROR! libpthread library not found, glibc problem?"
+    echo
+    exit 1
+    fi
+
+#enable support for NFQUEUE
+    AC_ARG_ENABLE(nfqueue,
+           AS_HELP_STRING([--enable-nfqueue], [Enable NFQUEUE support for inline IDP]),,[enable_nfqueue=no])
+    AS_IF([test "x$enable_nfqueue" = "xyes"], [
+        CFLAGS="$CFLAGS -DNFQ"
+
+#libnfnetlink
+case $host in
+*-*-mingw32*)
+;;
+*)
+    AC_ARG_WITH(libnfnetlink_includes,
+            [  --with-libnfnetlink-includes=DIR  libnfnetlink include directory],
+            [with_libnfnetlink_includes="$withval"],[with_libnfnetlink_includes=no])
+    AC_ARG_WITH(libnfnetlink_libraries,
+            [  --with-libnfnetlink-libraries=DIR    libnfnetlink library directory],
+            [with_libnfnetlink_libraries="$withval"],[with_libnfnetlink_libraries="no"])
+
+    if test "$with_libnfnetlink_includes" != "no"; then
+    CPPFLAGS="${CPPFLAGS} -I${with_libnfnetlink_includes}"
+    fi
+
+    AC_CHECK_HEADER(libnfnetlink/libnfnetlink.h,,[AC_ERROR(libnfnetlink.h not found ...)])
+
+    if test "$with_libnfnetlink_libraries" != "no"; then
+    LDFLAGS="${LDFLAGS}  -L${with_libnfnetlink_libraries}"
+    fi
+
+    NFNL=""
+    AC_CHECK_LIB(nfnetlink, nfnl_fd,, NFNL="no")
+
+    if test "$NFNL" = "no"; then
+    echo
+    echo "   ERROR!  nfnetlink library not found, go get it"
+    echo "   from www.netfilter.org."
+    echo "   we automatically append libnetfilter_queue/ when searching"
+    echo "   for headers etc. when the --with-libnfnetlink-inlcudes directive"
+    echo "   is used"
+    echo
+    exit 
+    fi
+;;
+esac
+
+#libnetfilter_queue
+    AC_ARG_WITH(libnetfilter_queue_includes,
+            [  --with-libnetfilter_queue-includes=DIR  libnetfilter_queue include directory],
+            [with_libnetfilter_queue_includes="$withval"],[with_libnetfilter_queue_includes=no])
+    AC_ARG_WITH(libnetfilter_queue_libraries,
+            [  --with-libnetfilter_queue-libraries=DIR    libnetfilter_queue library directory],
+            [with_libnetfilter_queue_libraries="$withval"],[with_libnetfilter_queue_libraries="no"])
+
+    if test "$with_libnetfilter_queue_includes" != "no"; then
+    CPPFLAGS="${CPPFLAGS} -I${with_libnetfilter_queue_includes}"
+    fi
+
+    AC_CHECK_HEADER(libnetfilter_queue/libnetfilter_queue.h,,[AC_ERROR(libnetfilter_queue/libnetfilter_queue.h not found ...)])
+
+    if test "$with_libnetfilter_queue_libraries" != "no"; then
+    LDFLAGS="${LDFLAGS}  -L${with_libnetfilter_queue_libraries}"
+    fi
+
+#LDFLAGS="${LDFLAGS} -lnetfilter_queue"
+
+    NFQ=""
+
+case $host in
+*-*-mingw32*)
+    AC_CHECK_LIB(netfilter_queue, nfq_open,, NFQ="no",-lws2_32)
+
+    AC_ARG_WITH(netfilterforwin_includes,
+            [  --with-netfilterforwin-includes=DIR  netfilterforwin include directory],
+            [with_netfilterforwin_includes="$withval"],[with_netfilterforwin_includes=no])
+
+    if test "$with_netfilterforwin_includes" != "no"; then
+    CPPFLAGS="${CPPFLAGS} -I${with_netfilterforwin_includes}"
+    else
+    CPPFLAGS="${CPPFLAGS} -I../../netfilterforwin"
+    fi
+;;
+*)
+    AC_CHECK_LIB(netfilter_queue, nfq_open,, NFQ="no",)
+;;
+esac
+
+    if test "$NFQ" = "no"; then
+    echo
+    echo "   ERROR!  libnetfilter_queue library not found, go get it"
+    echo "   from www.netfilter.org."
+    echo "   we automatically append libnetfilter_queue/ when searching"
+    echo "   for headers etc. when the --with-libnfq-inlcudes directive"
+    echo "   is used"
+    echo
+    exit 1 
+    fi
+])
+#enable support for IPFW
+    AC_ARG_ENABLE(ipfw,
+            AS_HELP_STRING([--enable-ipfw], [Enable FreeBSD IPFW support for inline IDP]),,[enable_ipfw=no])
+    AS_IF([test "x$enable_ipfw" = "xyes"], [
+        CFLAGS="$CFLAGS -DIPFW"
+    ])
+
+#prelude
+    AC_ARG_ENABLE(prelude,
+            AS_HELP_STRING([--enable-prelude], [Enable Prelude support for alerts]),,[enable_prelude=no])
+    AS_IF([test "x$enable_prelude" = "xyes"], [
+        CFLAGS="$CFLAGS -DPRELUDE"
+        AM_PATH_LIBPRELUDE(0.9.9, , AC_MSG_ERROR(Cannot find libprelude: Is libprelude-config in the path?), no)
+        if test "x${LIBPRELUDE_CFLAGS}" != "x"; then
+            CPPFLAGS="${CPPFLAGS} ${LIBPRELUDE_CFLAGS}"
+        fi
+
+        if test "x${LIBPRELUDE_LDFLAGS}" != "x"; then
+            LDFLAGS="${LDFLAGS} ${LIBPRELUDE_LDFLAGS}"
+        fi
+
+        if test "x${LIBPRELUDE_LIBS}" != "x"; then
+            LDFLAGS="${LDFLAGS} ${LIBPRELUDE_LIBS}"
+        fi
+    ])
+
+#libnet
+    AC_ARG_WITH(libnet_includes,
+            [  --with-libnet-includes=DIR     libnet include directory],
+            [with_libnet_includes="$withval"],[with_libnet_includes="no"])
+
+    AC_ARG_WITH(libnet_libraries,
+            [  --with-libnet-libraries=DIR    libnet library directory],
+            [with_libnet_libraries="$withval"],[with_libnet_libraries="no"])
+
+    if test "x$with_libnet_includes" != "xno"; then
+        CPPFLAGS="${CPPFLAGS} -I${with_libnet_includes}"
+        libnet_dir="${with_libnet_includes}"
+    else
+        libnet_dir="/usr/include /usr/local/include /usr/local/include/libnet11 /opt/local/include"
+    fi
+
+    if test "x$with_libnet_libraries" != "xno"; then
+        LDFLAGS="${LDFLAGS} -L${with_libnet_libraries}"
+    fi
+
+    LIBNET_DETECT_FAIL="no"
+    LIBNET_INC_DIR=""
+
+    for i in $libnet_dir; do
+    if test -r "$i/libnet.h"; then
+        LIBNET_INC_DIR="$i"
+    fi
+    done
+
+    AC_MSG_CHECKING(for libnet.h version 1.1.x)
+    if test "$LIBNET_INC_DIR" != ""; then
+        if eval "grep LIBNET_VERSION $LIBNET_INC_DIR/libnet.h | grep -v 1.1 >/dev/null"; then
+            AC_MSG_RESULT(no)
+            LIBNET_DETECT_FAIL="yes"
+            LIBNET_FAIL_WARN($libnet_dir)
+        else
+            AC_MSG_RESULT(yes)
+        fi
+
+        #CentOS, Fedora, Ubuntu-LTS, Ubuntu all set defines to the same values. libnet-config seems
+        #to have been depreciated but all distro's seem to include it as part of the package.
+        if test "$LIBNET_DETECT_FAIL" = "no"; then
+            LLIBNET=""
+            AC_CHECK_LIB(net, libnet_write,, LLIBNET="no")
+            if test "$LLIBNET" != "no"; then
+                CFLAGS="${CFLAGS} -DHAVE_LIBNET11 -D_BSD_SOURCE -D__BSD_SOURCE -D__FAVOR_BSD -DHAVE_NET_ETHERNET_H"
+            else
+            #if we displayed a warning already no reason to do it again.
+                if test "$LIBNET_DETECT_FAIL" = "no"; then
+                    LIBNET_DETECT_FAIL="yes"
+                    LIBNET_FAIL_WARN($libnet_dir)
+                fi
+            fi
+
+            # see if we have the patched libnet 1.1
+            # http://www.inliniac.net/blog/2007/10/16/libnet-11-ipv6-fixes-and-additions.html
+            #
+            # To prevent duping the lib link we reset LIBS after this check. Setting action-if-found to NULL doesn't seem to work
+            # see: http://blog.flameeyes.eu/2008/04/29/i-consider-ac_check_lib-harmful
+            if test "$LIBNET_DETECT_FAIL" = "no"; then
+                LLIBNET=""
+                TMPLIBS="${LIBS}"
+                AC_CHECK_LIB(net, libnet_build_icmpv6_unreach,, LLIBNET="no")
+                if test "$LLIBNET" != "no"; then
+                    CFLAGS="$CFLAGS -DHAVE_LIBNET_ICMPV6_UNREACH"
+                fi
+                LIBS="${TMPLIBS}"
+            fi
+        fi
+    else
+        LIBNET_DETECT_FAIL="yes"
+        LIBNET_FAIL_WARN($libnet_dir)
+    fi
+# libpfring (currently only supported for libpcap enabled pfring)
+# Error on the side of caution. If libpfring enabled pcap is being used and we don't link against -lpfring compilation will fail.
+    AC_ARG_ENABLE(pfring,
+           AS_HELP_STRING([--enable-pfring], [Enable Native PF_RING support]),,[enable_pfring=no])
+    AS_IF([test "x$enable_pfring" = "xyes"], [
+        CFLAGS="$CFLAGS -DHAVE_PFRING"
+    ])
+
+#We have to set CFLAGS for AC_TRY_COMPILE as it doesn't pay attention to CPPFLAGS
+    AC_ARG_WITH(libpfring_includes,
+            [  --with-libpfring-includes=DIR  libpfring include directory],
+            [with_libpfring_includes="$withval"],[with_libpfring_includes=no])
+    AC_ARG_WITH(libpfring_libraries,
+            [  --with-libpfring-libraries=DIR    libpfring library directory],
+            [with_libpfring_libraries="$withval"],[with_libpfring_libraries="no"])
+
+    if test "$with_libpfring_includes" != "no"; then
+    CPPFLAGS="${CPPFLAGS} -I${with_libpfring_includes}"
+    fi
+
+    if test "$with_libpfring_libraries" != "no"; then
+    LDFLAGS="${LDFLAGS}  -L${with_libpfring_libraries}"
+    fi
+
+    LIBPFRING=""
+    AC_CHECK_LIB(pfring, pfring_set_cluster,, LIBPFRING="no")
+    if test "$LIBPFRING" = "no"; then
+        if test "x$enable_pfring" = "xyes"; then
+        echo
+        echo "   ERROR! --enable-pfring was passed but the library was not found or version is >4, go get it"
+        echo "   from http://www.ntop.org/PF_RING.html"
+        echo
+        exit 1
+        fi
+    fi
+
+    AC_TRY_COMPILE([ #include <pfring.h> ],
+    [ pfring *pd; pd = pfring_open("eth1", 1,  1515, 1); pfring_set_cluster(pd, 99, cluster_round_robin); ],
+    [ pfring_cluster_type_available=yes ], [:]
+    )
+    if test "$pfring_cluster_type_available" = "yes"; then
+     CFLAGS="${CFLAGS} -DHAVE_PFRING_CLUSTER_TYPE"
+    fi
+
+
+# libpcap
+    AC_ARG_WITH(libpcap_includes,
+            [  --with-libpcap-includes=DIR  libpcap include directory],
+            [with_libpcap_includes="$withval"],[with_libpcap_includes=no])
+    AC_ARG_WITH(libpcap_libraries,
+            [  --with-libpcap-libraries=DIR    libpcap library directory],
+            [with_libpcap_libraries="$withval"],[with_libpcap_libraries="no"])
+
+    if test "$with_libpcap_includes" != "no"; then
+    CPPFLAGS="${CPPFLAGS} -I${with_libpcap_includes}"
+    fi
+
+AC_CHECK_HEADER(pcap.h,,[AC_ERROR(pcap.h not found ...)])
+
+    if test "$with_libpcap_libraries" != "no"; then
+    LDFLAGS="${LDFLAGS}  -L${with_libpcap_libraries}"
+    fi
+
+    LIBPCAP=""
+    AC_CHECK_LIB(pcap, pcap_open_live,, LIBPCAP="no")
+    if test "$LIBPCAP" = "no"; then
+    echo
+    echo "   ERROR!  libpcap library not found, go get it"
+    echo "   from http://www.tcpdump.org."
+    echo
+    exit 1
+    fi
+
+# pcap_activate and pcap_create only exists in libpcap >= 1.0
+    LIBPCAPVTEST=""
+#To prevent duping the lib link we reset LIBS after this check. Setting action-if-found to NULL doesn't seem to work
+#see: http://blog.flameeyes.eu/2008/04/29/i-consider-ac_check_lib-harmful
+    TMPLIBS="${LIBS}"
+    AC_CHECK_LIB(pcap, pcap_activate,, LPCAPVTEST="no")
+    if test "$LPCAPVTEST" != "no"; then
+    CFLAGS="${CFLAGS} `pcap-config --defines` `pcap-config --cflags` -DLIBPCAP_VERSION_MAJOR=1"
+    else
+    CFLAGS="${CFLAGS} -DLIBPCAP_VERSION_MAJOR=0"
+    fi
+    LIBS="${TMPLIBS}"
+
+#Appears as if pcap_set_buffer_size is linux only?
+    LIBPCAPSBUFF=""
+#To prevent duping the lib link we reset LIBS after this check. Setting action-if-found to NULL doesn't seem to work
+#see: http://blog.flameeyes.eu/2008/04/29/i-consider-ac_check_lib-harmful
+    TMPLIBS="${LIBS}"
+    AC_CHECK_LIB(pcap, pcap_set_buffer_size,, LPCAPSBUFF="no")
+    if test "$LPCAPSBUFF" != "no"; then
+    CFLAGS="${CFLAGS} -DHAVE_PCAP_SET_BUFF"
+    fi
+    LIBS="${TMPLIBS}"
+
+# enable the running of unit tests
+    AC_ARG_ENABLE(unittests,
+           AS_HELP_STRING([--enable-unittests], [Enable compilation of the unit tests]),,[enable_unittests=no])
+    AS_IF([test "x$enable_unittests" = "xyes"], [
+        UT_ENABLED="yes"
+        CFLAGS="${CFLAGS} -DUNITTESTS"
+    ])
+
+# enable native timeval for unified alert output
+    AC_ARG_ENABLE(unified-native-timeval,
+           AS_HELP_STRING([--enable-unified-native-timeval], [Use native timeval for unified outputs]),,[enable_unified_native_timeval=no])
+    AS_IF([test "x$enable_unified_native_timeval" = "xyes"], [
+        CFLAGS="${CFLAGS} -DUNIFIED_NATIVE_TIMEVAL"
+    ])
+
+# enable debug output
+    AC_ARG_ENABLE(debug,
+           AS_HELP_STRING([--enable-debug], [Enable debug output]),,[enable_debug=no])
+    AS_IF([test "x$enable_debug" = "xyes"], [
+        CFLAGS="${CFLAGS} -DDEBUG"
+    ])
+
+# enable debug validation functions & macro's output
+    AC_ARG_ENABLE(debug-validation,
+           AS_HELP_STRING([--enable-debug-validation], [Enable (debug) validation code output]),,[enable_debug_validation=no])
+    AS_IF([test "x$enable_debug_validation" = "xyes"], [
+        CFLAGS="${CFLAGS} -DDEBUG_VALIDATION"
+    ])
+
+#libhtp
+    AC_ARG_ENABLE(non-bundled-htp,
+           AS_HELP_STRING([--enable-non-bundled-htp], [Enable the use of an already installed version of htp]),,[enable_non_bundled_htp=no])
+    AS_IF([test "x$enable_non_bundled_htp" = "xyes"], [
+        AC_ARG_WITH(libhtp_includes,
+                [  --with-libhtp-includes=DIR  libhtp include directory],
+                [with_libhtp_includes="$withval"],[with_libhtp_includes=no])
+        AC_ARG_WITH(libhtp_libraries,
+                [  --with-libhtp-libraries=DIR    libhtp library directory],
+                [with_libhtp_libraries="$withval"],[with_libhtp_libraries="no"])
+
+        if test "$with_libhtp_includes" != "no"; then
+        CPPFLAGS="${CPPFLAGS} -I${with_libhtp_includes}"
+        fi
+
+        if test "$with_libhtp_libraries" != "no"; then
+        LDFLAGS="${LDFLAGS} -L${with_libhtp_libraries}"
+        fi
+
+        AC_CHECK_HEADER(htp/htp.h,,[AC_ERROR(htp/htp.h not found ...)])
+
+        LIBHTP=""
+        AC_CHECK_LIB(htp, htp_conn_create,, LIBHTP="no")
+        if test "$LIBHTP" = "no"; then
+        echo
+        echo "   ERROR! libhtp library not found"
+        echo
+        exit 1
+        fi
+        PKG_CHECK_MODULES(LIBHTPMINVERSION, htp >= 0.2.3,[libhtp_minver_found="yes"],[libhtp_minver_found="no"])
+        if test "$libhtp_minver_found" = "no"; then
+        echo
+        echo "   ERROR! libhtp was found but is not the minimum version required >=0.2.3"
+        echo
+        exit 1
+        fi
+    ])
+
+   #even if we are using an installed htp lib we still need to gen Makefiles inside of htp
+   AC_CONFIG_SUBDIRS([libhtp])
+   AM_CONDITIONAL([BUILD_LIBHTP], [test "x$enable_non_bundled_htp" = "xno"])
+
+# enable CUDA output
+    AC_ARG_ENABLE(cuda,
+           AS_HELP_STRING([--enable-cuda], [Enable experimental CUDA pattern matching]),,[enable_cuda=no])
+    AS_IF([test "x$enable_cuda" = "xyes"], [
+        AC_ARG_WITH(cuda_includes,
+                [  --with-cuda-includes=DIR  cuda include directory],
+                [with_cuda_includes="$withval"],[with_cuda_includes=no])
+        AC_ARG_WITH(cuda_libraries,
+                [  --with-cuda-libraries=DIR    cuda library directory],
+                [with_cuda_libraries="$withval"],[with_cuda_libraries="no"])
+
+        CFLAGS="${CFLAGS} -D__SC_CUDA_SUPPORT__"
+
+        if test "$with_cuda_includes" != "no"; then
+            CPPFLAGS="${CPPFLAGS} -I${with_cuda_includes}"
+        else
+            CPPFLAGS="${CPPFLAGS} -I/usr/include/cuda"
+        fi
+
+        if test "$with_cuda_libraries" != "no"; then
+            LDFLAGS="${LDFLAGS} -L${with_cuda_libraries}"
+        fi
+
+        AC_CHECK_HEADER(cuda.h,,[AC_ERROR(cuda.h not found ...)])
+
+        LIBCUDA=""
+        AC_CHECK_LIB(cuda, cuArray3DCreate,, LIBCUDA="no")
+        if test "$LIBCUDA" = "no"; then
+            echo
+            echo "   ERROR! libcuda library not found"
+            echo
+            exit 1
+        fi
+    ])
+
+
+# Check for libcap-ng
+
+    AC_ARG_WITH(libcap_ng_includes,
+            [  --with-libcap_ng-includes=DIR  libcap_ng include directory],
+            [with_libcap-ng_includes="$withval"],[with_libcap_ng_includes=no])
+    AC_ARG_WITH(libcap_ng_libraries,
+            [  --with-libcap_ng-libraries=DIR    libcap_ng library directory],
+            [with_libcap_ng_libraries="$withval"],[with_libcap_ng_libraries="no"])
+
+    if test "$with_libcap_ng_includes" != "no"; then
+    CPPFLAGS="${CPPFLAGS} -I${with_libcap_ng_includes}"
+    fi
+
+    if test "$with_libcap_ng_libraries" != "no"; then
+    LDFLAGS="${LDFLAGS}  -L${with_libcap_ng_libraries}"
+    fi
+
+    AC_CHECK_HEADER(cap-ng.h,,LIBCAP_NG="no")
+    if test "$LIBCAP_NG" != "no"; then
+        LIBCAP_NG=""
+        AC_CHECK_LIB(cap-ng,capng_clear,,LIBCAP_NG="no")
+    fi
+
+    if test "$LIBCAP_NG" != "no"; then
+    CFLAGS="${CFLAGS} -DHAVE_LIBCAP_NG"
+    fi
+
+    if test "$LIBCAP_NG" = "no"; then
+    echo
+    echo "   WARNING!  libcap-ng library not found, go get it"
+    echo "   from http://people.redhat.com/sgrubb/libcap-ng/"
+    echo "   or check your package manager."
+    echo
+    echo "   Suricata will be built without support for dropping privs."
+    echo
+    fi
+
+    AC_ARG_ENABLE(profiling,
+           AS_HELP_STRING([--enable-profiling], [Enable performance profiling]),,[enable_profiling=no])
+    AS_IF([test "x$enable_profiling" = "xyes"], [
+        CFLAGS="${CFLAGS} -DPROFILING"
+    ])
+
+# Check for DAG support.
+
+    AC_ARG_ENABLE(dag,
+	        [  --enable-dag  Enable DAG capture],
+	        [ enable_dag=yes ],
+	        [ enable_dag=no])
+    AC_ARG_WITH(dag_includes,
+            [  --with-dag-includes=DIR  dagapi include directory],
+            [with_dag_includes="$withval"],[with_dag_includes="no"])
+    AC_ARG_WITH(dag_libraries,
+            [  --with-dag-libraries=DIR  dagapi library directory],
+            [with_dag_libraries="$withval"],[with_dag_libraries="no"])
+
+    if test "$enable_dag" = "yes"; then
+
+	    if test "$with_dag_includes" != "no"; then
+            CPPFLAGS="${CPPFLAGS} -I${with_dag_includes}"
+        fi
+
+        if test "$with_dag_libraries" != "no"; then
+            LDFLAGS="${LDFLAGS} -I${with_dag_libraries}"
+        fi
+
+        AC_CHECK_HEADER(dagapi.h,DAG="yes",DAG="no")
+        if test "$DAG" != "no"; then
+            DAG=""
+	        AC_CHECK_LIB(dag,dag_open,DAG="yes",DAG="no")
+        fi
+
+        if test "$DAG" != "no"; then
+            CFLAGS="${CFLAGS} -DHAVE_DAG"
+        fi
+
+        if test "$DAG" = "no"; then
+            echo
+            echo "  ERROR! libdag library not found"
+            echo
+            exit 1
+        fi
+    fi
+
+AC_SUBST(CFLAGS)
+AC_SUBST(LDFLAGS)
+AC_SUBST(CPPFLAGS)
+
+AC_OUTPUT(Makefile src/Makefile)
+
+echo "
+Suricata Configuration:
+  NFQueue support:          ${enable_nfqueue}
+  IPFW support:             ${enable_ipfw}
+  PF_RING support:          ${enable_pfring}
+  Prelude support:          ${enable_prelude}
+  Unit tests enabled:       ${enable_unittests}
+  Debug output enabled:     ${enable_debug}
+  Debug validation enabled: ${enable_debug_validation}
+  CUDA enabled:             ${enable_cuda}
+  DAG enabled:              ${enable_dag}
+  Profiling enabled:        ${enable_profiling}
+  GCC Protect enabled:      ${enable_gccprotect}
+  GCC march native enabled: ${enable_gccmarch_native}
+  GCC Profile enabled:      ${enable_gccprofile}
+  Unified native time:      ${enable_unified_native_timeval}
+  Non-bundled htp:          ${enable_non_bundled_htp}
+"
