@@ -603,6 +603,7 @@ int main(int argc, char **argv)
                 exit(EXIT_FAILURE);
             }
             break;
+        //TODO Check Point 1
         case 'q':
 #ifdef NFQ
             if (run_mode == MODE_UNKNOWN) {
@@ -695,11 +696,12 @@ int main(int argc, char **argv)
     if (!CheckValidDaemonModes(daemon, run_mode)) {
         exit(EXIT_FAILURE);
     }
-
+    //TODO Check Point 2
     /* Initializations for global vars, queues, etc (memsets, mutex init..) */
     GlobalInits();
     TimeInit();
 
+    //TODO Check Point 3
     /* Load yaml configuration file if provided. */
     if (conf_filename != NULL) {
         if (ConfYamlLoadFile(conf_filename) != 0) {
@@ -717,6 +719,7 @@ int main(int argc, char **argv)
         exit(EXIT_SUCCESS);
     }
 
+    //TODO Check Point 4
     /* Check for the existance of the default logging directory which we pick
      * from suricata.yaml.  If not found, shut the engine down */
     if (ConfGet("default-log-dir", &log_dir) != 1)
@@ -728,16 +731,19 @@ int main(int argc, char **argv)
         exit(EXIT_FAILURE);
     }
 
+    //TODO Check Point 5
     /* Pull the max pending packets from the config, if not found fall
      * back on a sane default. */
     if (ConfGetInt("max-pending-packets", &max_pending_packets) != 1)
         max_pending_packets = DEFAULT_MAX_PENDING_PACKETS;
     SCLogDebug("Max pending packets set to %"PRIiMAX, max_pending_packets);
 
+    //TODO Check Point 6
     /* Since our config is now loaded we can finish configurating the
      * logging module. */
     SCLogLoadConfig();
 
+    //TODO Check Point 7
     /* Load the Host-OS lookup. */
     SCHInfoLoadFromConfig();
 
@@ -745,6 +751,7 @@ int main(int argc, char **argv)
         usage(argv[0]);
         exit(EXIT_FAILURE);
     }
+
 
     /* create table for O(1) lowercase conversion lookup */
     uint8_t c = 0;
@@ -754,6 +761,8 @@ int main(int argc, char **argv)
        else
            g_u8_lowercasetable[c] = c;
     }
+
+    //TODO Check Point 8
     /* hardcoded initialization code */
     MpmTableSetup(); /* load the pattern matchers */
     SigTableSetup(); /* load the rule keywords */
@@ -766,6 +775,8 @@ int main(int argc, char **argv)
 #ifdef PROFILING
     SCProfilingInit();
 #endif /* PROFILING */
+
+    //TODO Check Point 9
     SCReputationInitCtx();
 
     TagInitCtx();
@@ -923,6 +934,7 @@ int main(int argc, char **argv)
     }
 #endif /* UNITTESTS */
 
+    //TODO Check Point 10
     if (daemon == 1) {
         Daemonize();
         if (pid_filename != NULL) {
@@ -940,6 +952,7 @@ int main(int argc, char **argv)
         }
     }
 
+    //TODO Check Point 11
     /* registering signals we use */
     SignalHandlerSetup(SIGINT, SignalHandlerSigint);
     SignalHandlerSetup(SIGTERM, SignalHandlerSigterm);
@@ -947,7 +960,7 @@ int main(int argc, char **argv)
 #ifndef OS_WIN32
 	/* SIGHUP is not implemnetd on WIN32 */
     //SignalHandlerSetup(SIGHUP, SignalHandlerSighup);
-
+    //TODO Check Point 11
     /* Get the suricata user ID to given user ID */
     if (do_setuid == TRUE) {
         if (SCGetUserID(user_name, group_name, &userid, &groupid) != 0) {
@@ -966,7 +979,7 @@ int main(int argc, char **argv)
         sc_set_caps = TRUE;
     }
 #endif /* OS_WIN32 */
-
+    //TODO Check Point 12
     /* pre allocate packets */
     SCLogDebug("preallocating packets... packet size %" PRIuMAX "", (uintmax_t)sizeof(Packet));
     int i = 0;
@@ -991,7 +1004,7 @@ int main(int argc, char **argv)
     SCClassConfLoadClassficationConfigFile(de_ctx);
 
     ActionInitConfig();
-
+    //TODO Check Point 13
     if (SigLoadSignatures(de_ctx, sig_file) < 0) {
         if (sig_file == NULL) {
             SCLogError(SC_ERR_OPENING_FILE, "Signature file has not been provided");
@@ -1017,11 +1030,11 @@ int main(int argc, char **argv)
     struct timeval start_time;
     memset(&start_time, 0, sizeof(start_time));
     gettimeofday(&start_time, NULL);
-
+    //TODO Check Point 14
     SCDropMainThreadCaps(userid, groupid);
-
+    //TODO Check Point 15
     RunModeInitializeOutputs();
-
+    //TODO Check Point 16
     /* run the selected runmode */
     if (run_mode == MODE_PCAP_DEV) {
         //RunModeIdsPcap3(de_ctx, pcap_dev);
@@ -1044,6 +1057,7 @@ int main(int argc, char **argv)
         //RunModeIdsPfring4(de_ctx, pfring_dev);
         RunModeIdsPfringAuto(de_ctx, pfring_dev);
     }
+    //TODO Check Point 17
     else if (run_mode == MODE_NFQ) {
         //RunModeIpsNFQ(de_ctx, nfq_id);
         RunModeIpsNFQAuto(de_ctx, nfq_id);
@@ -1092,7 +1106,7 @@ int main(int argc, char **argv)
                    "aborting...");
         exit(EXIT_FAILURE);
     }
-
+    //TODO Check Point 18
     /* Un-pause all the paused threads */
     TmThreadContinueThreads();
 

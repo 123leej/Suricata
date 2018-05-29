@@ -684,7 +684,7 @@ int RunModeIdsPcap3(DetectEngineCtx *de_ctx, char *iface) {
     }
     return 0;
 }
-
+//TODO Check Point 19-1
 int RunModeIpsNFQ(DetectEngineCtx *de_ctx, char *nfq_id) {
     TimeModeSetLive();
 
@@ -3063,6 +3063,7 @@ int RunModeIpsIPFWAuto(DetectEngineCtx *de_ctx) {
  * \retval 0 if all goes well. (If any problem is detected the engine will
  *           exit())
  */
+//TODO Check Point 19-2
 int RunModeIpsNFQAuto(DetectEngineCtx *de_ctx, char *nfq_id) {
     SCEnter();
     char tname[12];
@@ -3074,13 +3075,15 @@ int RunModeIpsNFQAuto(DetectEngineCtx *de_ctx, char *nfq_id) {
     RunModeInitialize();
 
     TimeModeSetLive();
-
+    //TODO Check Point 20
     /* create the threads */
     ThreadVars *tv_receivenfq = TmThreadCreatePacketHandler("ReceiveNFQ","packetpool","packetpool","pickup-queue","simple","1slot_noinout");
     if (tv_receivenfq == NULL) {
         printf("ERROR: TmThreadsCreate failed\n");
         exit(EXIT_FAILURE);
     }
+
+    //TODO Check Point 21
     TmModule *tm_module = TmModuleGetByName("ReceiveNFQ");
     if (tm_module == NULL) {
         printf("ERROR: TmModuleGetByName failed for ReceiveNFQ\n");
@@ -3093,22 +3096,25 @@ int RunModeIpsNFQAuto(DetectEngineCtx *de_ctx, char *nfq_id) {
         if (ncpus > 1)
             TmThreadSetThreadPriority(tv_receivenfq, PRIO_MEDIUM);
     }
-
+    //TODO Check Point 22
     if (TmThreadSpawn(tv_receivenfq) != TM_ECODE_OK) {
         printf("ERROR: TmThreadSpawn failed\n");
         exit(EXIT_FAILURE);
     }
-
+    //TODO Check Point 23
     ThreadVars *tv_decode1 = TmThreadCreatePacketHandler("Decode1","pickup-queue","simple","decode-queue1","simple","1slot");
     if (tv_decode1 == NULL) {
         printf("ERROR: TmThreadsCreate failed for Decode1\n");
         exit(EXIT_FAILURE);
     }
+
+    //TODO Check Point 24
     tm_module = TmModuleGetByName("DecodeNFQ");
     if (tm_module == NULL) {
         printf("ERROR: TmModuleGetByName DecodeNFQ failed\n");
         exit(EXIT_FAILURE);
     }
+
     Tm1SlotSetFunc(tv_decode1,tm_module,NULL);
 
     if (threading_set_cpu_affinity) {
@@ -3121,7 +3127,7 @@ int RunModeIpsNFQAuto(DetectEngineCtx *de_ctx, char *nfq_id) {
         printf("ERROR: TmThreadSpawn failed\n");
         exit(EXIT_FAILURE);
     }
-
+    //TODO Check Point 25
     ThreadVars *tv_stream1 = TmThreadCreatePacketHandler("Stream1","decode-queue1","simple","stream-queue1","simple","1slot");
     if (tv_stream1 == NULL) {
         printf("ERROR: TmThreadsCreate failed for Stream1\n");
@@ -3149,13 +3155,14 @@ int RunModeIpsNFQAuto(DetectEngineCtx *de_ctx, char *nfq_id) {
      * threads we're not creating the most on CPU0. */
     if (ncpus > 0)
         cpu = 1;
-
+    //TODO Check Point 26
     /* always create at least one thread */
     int thread_max = ncpus * threading_detect_ratio;
     if (thread_max < 1)
         thread_max = 1;
 
     int thread;
+    //TODO Check Point 27
     for (thread = 0; thread < thread_max; thread++) {
         snprintf(tname, sizeof(tname),"Detect%"PRIu16, thread+1);
         if (tname == NULL)
@@ -3206,7 +3213,7 @@ int RunModeIpsNFQAuto(DetectEngineCtx *de_ctx, char *nfq_id) {
         else
             cpu++;
     }
-
+    //TODO Check Point
     ThreadVars *tv_verdict = TmThreadCreatePacketHandler("Verdict","verdict-queue","simple","respond-queue","simple","1slot");
     if (tv_verdict == NULL) {
         printf("ERROR: TmThreadsCreate failed\n");
@@ -3229,7 +3236,7 @@ int RunModeIpsNFQAuto(DetectEngineCtx *de_ctx, char *nfq_id) {
         printf("ERROR: TmThreadSpawn failed\n");
         exit(EXIT_FAILURE);
     }
-
+    //TODO Check Point
     ThreadVars *tv_rreject = TmThreadCreatePacketHandler("RespondReject","respond-queue","simple","alert-queue1","simple","1slot");
     if (tv_rreject == NULL) {
         printf("ERROR: TmThreadsCreate failed\n");
@@ -3252,7 +3259,7 @@ int RunModeIpsNFQAuto(DetectEngineCtx *de_ctx, char *nfq_id) {
         printf("ERROR: TmThreadSpawn failed\n");
         exit(EXIT_FAILURE);
     }
-
+    //TODO Check Point
     ThreadVars *tv_outputs = TmThreadCreatePacketHandler("Outputs",
         "alert-queue1", "simple", "packetpool", "packetpool", "varslot");
 
