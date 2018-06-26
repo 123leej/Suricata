@@ -52,8 +52,6 @@
 #include "output.h"
 #include "alert-fastlog.h"
 
-#include "util-mpm-b2g-cuda.h"
-#include "util-cuda-handlers.h"
 #include "util-privs.h"
 #include "util-print.h"
 

@@ -54,9 +54,6 @@
 #include "app-layer-detect-proto.h"
 
 #include "util-spm.h"
-#include "util-cuda.h"
-#include "util-cuda-handlers.h"
-#include "util-mpm-b2g-cuda.h"
 #include "util-debug.h"
 
 #define INSPECT_BYTES  32

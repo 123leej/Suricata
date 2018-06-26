@@ -46,9 +46,6 @@
 
 #include "stream.h"
 
-#include "util-cuda-handlers.h"
-#include "util-mpm-b2g-cuda.h"
-
 #include "util-enum.h"
 #include "util-debug.h"
 #include "util-print.h"

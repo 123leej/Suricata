@@ -79,16 +79,6 @@
 #include "source-nfq.h"
 #include "source-nfq-prototypes.h"
 
-#include "source-ipfw.h"
-
-#include "source-pcap.h"
-#include "source-pcap-file.h"
-
-#include "source-pfring.h"
-
-#include "source-erf-file.h"
-#include "source-erf-dag.h"
-
 #include "respond-reject.h"
 
 #include "flow.h"
@@ -122,7 +112,6 @@
 
 #include "runmodes.h"
 
-#include "util-cuda.h"
 #include "util-decode-asn1.h"
 #include "util-debug.h"
 #include "util-error.h"
@@ -130,10 +119,6 @@
 #include "util-daemon.h"
 #include "reputation.h"
 
-/* holds the cuda b2g module */
-#include "util-mpm-b2g-cuda.h"
-#include "util-cuda-handlers.h"
-#include "cuda-packet-batcher.h"
 
 #include "output.h"
 #include "util-privs.h"
@@ -436,38 +421,16 @@ int main(int argc, char **argv)
         switch (opt) {
         case 0:
             if(strcmp((long_opts[option_index]).name , "pfring-int") == 0){
-#ifdef HAVE_PFRING
-                run_mode = MODE_PFRING;
-                if (ConfSet("pfring.interface", optarg, 0) != 1) {
-                    fprintf(stderr, "ERROR: Failed to set pfring interface.\n");
-                    exit(EXIT_FAILURE);
-                }
-#else
                 SCLogError(SC_ERR_NO_PF_RING,"PF_RING not enabled. Make sure to pass --enable-pfring to configure when building.");
                 exit(EXIT_FAILURE);
-#endif /* HAVE_PFRING */
             }
             else if(strcmp((long_opts[option_index]).name , "pfring-cluster-id") == 0){
-#ifdef HAVE_PFRING
-                if (ConfSet("pfring.cluster-id", optarg, 0) != 1) {
-                    fprintf(stderr, "ERROR: Failed to set pfring cluster-id.\n");
-                    exit(EXIT_FAILURE);
-                }
-#else
                 SCLogError(SC_ERR_NO_PF_RING,"PF_RING not enabled. Make sure to pass --enable-pfring to configure when building.");
                 exit(EXIT_FAILURE);
-#endif /* HAVE_PFRING */
             }
             else if(strcmp((long_opts[option_index]).name , "pfring-cluster-type") == 0){
-#ifdef HAVE_PFRING
-                if (ConfSet("pfring.cluster-type", optarg, 0) != 1) {
-                    fprintf(stderr, "ERROR: Failed to set pfring cluster-type.\n");
-                    exit(EXIT_FAILURE);
-                }
-#else
                 SCLogError(SC_ERR_NO_PF_RING,"PF_RING not enabled. Make sure to pass --enable-pfring to configure when building.");
                 exit(EXIT_FAILURE);
-#endif /* HAVE_PFRING */
             }
             else if(strcmp((long_opts[option_index]).name, "init-errors-fatal") == 0) {
                 if (ConfSet("engine.init_failure_fatal", "1", 0) != 1) {
@@ -476,59 +439,21 @@ int main(int argc, char **argv)
                 }
             }
             else if(strcmp((long_opts[option_index]).name, "list-unittests") == 0) {
-#ifdef UNITTESTS
-                /* Set run_mode to unit tests. */
-                run_mode = MODE_UNITTEST;
-#else
                 fprintf(stderr, "ERROR: Unit tests not enabled. Make sure to pass --enable-unittests to configure when building.\n");
                 exit(EXIT_FAILURE);
-#endif /* UNITTESTS */
             }
-#ifdef OS_WIN32
-            else if(strcmp((long_opts[option_index]).name, "service-install") == 0) {
-				if (SCServiceInstall(argc, argv)) {
-					exit(EXIT_FAILURE);
-				}
-				SCLogInfo("Suricata service has been successfuly installed.");
-				exit(EXIT_SUCCESS);
-            }
-            else if(strcmp((long_opts[option_index]).name, "service-remove") == 0) {
-				if (SCServiceRemove(argc, argv)) {
-					exit(EXIT_FAILURE);
-				}
-				SCLogInfo("Suricata service has been successfuly removed.");
-				exit(EXIT_SUCCESS);
-            }
-            else if(strcmp((long_opts[option_index]).name, "service-change-params") == 0) {
-				if (SCServiceChangeParams(argc, argv)) {
-					exit(EXIT_FAILURE);
-				}
-				SCLogInfo("Suricata service startup parameters has been successfuly changed.");
-				exit(EXIT_SUCCESS);
-            }
-#endif /* OS_WIN32 */
             else if(strcmp((long_opts[option_index]).name, "pidfile") == 0) {
                 pid_filename = optarg;
             }
             else if(strcmp((long_opts[option_index]).name, "fatal-unittests") == 0) {
-#ifdef UNITTESTS
-                if (ConfSet("unittests.failure_fatal", "1", 0) != 1) {
-                    fprintf(stderr, "ERROR: Failed to set unittests failure_fatal.\n");
-                    exit(EXIT_FAILURE);
-                }
-#else
                 fprintf(stderr, "ERROR: Unit tests not enabled. Make sure to pass --enable-unittests to configure when building.\n");
                 exit(EXIT_FAILURE);
-#endif /* UNITTESTS */
             }
             else if(strcmp((long_opts[option_index]).name, "user") == 0) {
 #ifndef HAVE_LIBCAP_NG
                 SCLogError(SC_ERR_LIBCAP_NG_REQUIRED, "libcap-ng is required to"
                         " drop privileges, but it was not compiled into Suricata.");
                 exit(EXIT_FAILURE);
-#else
-                user_name = optarg;
-                do_setuid = TRUE;
 #endif /* HAVE_LIBCAP_NG */
             }
             else if(strcmp((long_opts[option_index]).name, "group") == 0) {
@@ -536,9 +461,6 @@ int main(int argc, char **argv)
                 SCLogError(SC_ERR_LIBCAP_NG_REQUIRED, "libcap-ng is required to"
                         " drop privileges, but it was not compiled into Suricata.");
                 exit(EXIT_FAILURE);
-#else
-                group_name = optarg;
-                do_setgid = TRUE;
 #endif /* HAVE_LIBCAP_NG */
             }
             else if (strcmp((long_opts[option_index]).name, "erf-in") == 0) {
@@ -546,35 +468,21 @@ int main(int argc, char **argv)
                 erf_file = optarg;
             }
 			else if (strcmp((long_opts[option_index]).name, "dag") == 0) {
-#ifdef HAVE_DAG
-				run_mode = MODE_DAG;
-				dag_input = optarg;
-#else
 				SCLogError(SC_ERR_DAG_REQUIRED, "libdag and a DAG card are required"
 						" to receieve packets using --dag.");
 				exit(EXIT_FAILURE);
-#endif /* HAVE_DAG */
 			}
             else if(strcmp((long_opts[option_index]).name, "pcap-buffer-size") == 0) {
-#ifdef HAVE_PCAP_SET_BUFF
-                if (ConfSet("pcap.buffer-size", optarg, 0) != 1) {
-                    fprintf(stderr, "ERROR: Failed to set pcap-buffer-size.\n");
-                    exit(EXIT_FAILURE);
-                }
-#else
                 SCLogError(SC_ERR_NO_PCAP_SET_BUFFER_SIZE, "The version of libpcap you have"
                         " doesn't support setting buffer size.");
-#endif /* HAVE_PCAP_SET_BUFF */
             }
             break;
         case 'c':
             conf_filename = optarg;
             break;
-#ifndef OS_WIN32
         case 'D':
             daemon = 1;
             break;
-#endif /* OS_WIN32 */
         case 'h':
             usage(argv[0]);
             exit(EXIT_SUCCESS);
@@ -621,23 +529,8 @@ int main(int argc, char **argv)
 #endif /* NFQ */
             break;
         case 'd':
-#ifdef IPFW
-            if (run_mode == MODE_UNKNOWN) {
-                run_mode = MODE_IPFW;
-            } else {
-                SCLogError(SC_ERR_MULTIPLE_RUN_MODE, "more than one run mode "
-                                                     "has been specified");
-                usage(argv[0]);
-                exit(EXIT_SUCCESS);
-            }
-            if (ConfSet("ipfw-divert-port", optarg, 0) != 1) {
-                fprintf(stderr, "ERROR: Failed to set ipfw_divert_port\n");
-                exit(EXIT_FAILURE);
-            }
-#else
             SCLogError(SC_ERR_IPFW_NOSUPPORT,"IPFW not enabled. Make sure to pass --enable-ipfw to configure when building.");
             exit(EXIT_FAILURE);
-#endif /* IPFW */
             break;
         case 'r':
             if (run_mode == MODE_UNKNOWN) {
@@ -654,27 +547,10 @@ int main(int argc, char **argv)
             sig_file = optarg;
             break;
         case 'u':
-#ifdef UNITTESTS
-            if (run_mode == MODE_UNKNOWN) {
-                run_mode = MODE_UNITTEST;
-            } else {
-                SCLogError(SC_ERR_MULTIPLE_RUN_MODE, "more than one run mode has"
-                                                     " been specified");
-                usage(argv[0]);
-                exit(EXIT_SUCCESS);
-            }
-#else
             fprintf(stderr, "ERROR: Unit tests not enabled. Make sure to pass --enable-unittests to configure when building.\n");
             exit(EXIT_FAILURE);
-#endif /* UNITTESTS */
             break;
         case 'U':
-#ifdef UNITTESTS
-            regex_arg = optarg;
-
-            if(strlen(regex_arg) == 0)
-            regex_arg = NULL;
-#endif
             break;
         case 'V':
             printf("\nThis is %s version %s\n\n", PROG_NAME, PROG_VER);
@@ -688,10 +564,6 @@ int main(int argc, char **argv)
 
     UtilCpuPrintSummary();
 
-#ifdef __SC_CUDA_SUPPORT__
-    /* Init the CUDA environment */
-    SCCudaInitCudaEnvironment();
-#endif
 
     if (!CheckValidDaemonModes(daemon, run_mode)) {
         exit(EXIT_FAILURE);
@@ -807,10 +679,6 @@ int main(int argc, char **argv)
     TmModuleLogHttpLogRegister();
     TmModuleLogHttpLogIPv4Register();
     TmModuleLogHttpLogIPv6Register();
-#ifdef __SC_CUDA_SUPPORT__
-    TmModuleCudaMpmB2gRegister();
-    TmModuleCudaPacketBatcherRegister();
-#endif
     TmModuleReceiveErfFileRegister();
     TmModuleDecodeErfFileRegister();
     TmModuleReceiveErfDagRegister();
@@ -828,111 +696,6 @@ int main(int argc, char **argv)
     RegisterFTPParsers();
     RegisterSSLParsers();
     AppLayerParsersInitPostProcess();
-
-#ifdef UNITTESTS
-
-    if (run_mode == MODE_UNITTEST) {
-#ifdef DBG_MEM_ALLOC
-    SCLogInfo("Memory used at startup: %"PRIdMAX, (intmax_t)global_mem);
-#endif
-        /* test and initialize the unittesting subsystem */
-        if(regex_arg == NULL){
-            regex_arg = ".*";
-            UtRunSelftest(regex_arg); /* inits and cleans up again */
-        }
-
-        AppLayerHtpEnableRequestBodyCallback();
-        AppLayerHtpRegisterExtraCallbacks();
-
-        UtInitialize();
-        UTHRegisterTests();
-        SCReputationRegisterTests();
-        TmModuleRegisterTests();
-        SigTableRegisterTests();
-        HashTableRegisterTests();
-        HashListTableRegisterTests();
-        BloomFilterRegisterTests();
-        BloomFilterCountingRegisterTests();
-        PoolRegisterTests();
-        ByteRegisterTests();
-        MpmRegisterTests();
-        FlowBitRegisterTests();
-        FlowAlertSidRegisterTests();
-        SCPerfRegisterTests();
-        DecodePPPRegisterTests();
-        DecodeVLANRegisterTests();
-        HTPParserRegisterTests();
-        TLSParserRegisterTests();
-        SMBParserRegisterTests();
-        DCERPCParserRegisterTests();
-        DCERPCUDPParserRegisterTests();
-        FTPParserRegisterTests();
-        DecodeRawRegisterTests();
-        DecodePPPOERegisterTests();
-        DecodeICMPV4RegisterTests();
-        DecodeICMPV6RegisterTests();
-        DecodeIPV4RegisterTests();
-        DecodeTCPRegisterTests();
-        DecodeUDPV4RegisterTests();
-        DecodeGRERegisterTests();
-        DecodeAsn1RegisterTests();
-        AlpDetectRegisterTests();
-        ConfRegisterTests();
-        ConfYamlRegisterTests();
-        TmqhFlowRegisterTests();
-        FlowRegisterTests();
-        SCSigRegisterSignatureOrderingTests();
-        SCLogRegisterTests();
-        SCRadixRegisterTests();
-        DefragRegisterTests();
-        SigGroupHeadRegisterTests();
-        SCHInfoRegisterTests();
-        SCRuleVarsRegisterTests();
-        AppLayerParserRegisterTests();
-        ThreadMacrosRegisterTests();
-        UtilSpmSearchRegistertests();
-        UtilActionRegisterTests();
-        SCClassConfRegisterTests();
-        SCThresholdConfRegisterTests();
-        SSLParserRegisterTests();
-#ifdef __SC_CUDA_SUPPORT__
-        SCCudaRegisterTests();
-#endif
-        PayloadRegisterTests();
-        DcePayloadRegisterTests();
-        UriRegisterTests();
-#ifdef PROFILING
-        SCProfilingRegisterTests();
-#endif
-        DeStateRegisterTests();
-        DetectRingBufferRegisterTests();
-        if (list_unittests) {
-            UtListTests(regex_arg);
-        }
-        else {
-            uint32_t failed = UtRunTests(regex_arg);
-            UtCleanup();
-#ifdef __SC_CUDA_SUPPORT__
-            /* need this in case any of the cuda dispatcher threads are still
-             * running, kill them, so that we can free the cuda contexts.  We
-             * need to free those cuda contexts so that next when we call
-             * deregister functions, we will need to attach to those contexts
-             * the contexts and its associated data */
-            TmThreadKillThreads();
-            SCCudaHlDeRegisterAllRegisteredModules();
-#endif
-            if (failed) {
-                exit(EXIT_FAILURE);
-            }
-        }
-
-#ifdef DBG_MEM_ALLOC
-        SCLogInfo("Total memory used (without SCFree()): %"PRIdMAX, (intmax_t)global_mem);
-#endif
-
-        exit(EXIT_SUCCESS);
-    }
-#endif /* UNITTESTS */
 
     //TODO Check Point 10
     if (daemon == 1) {
@@ -957,7 +720,6 @@ int main(int argc, char **argv)
     SignalHandlerSetup(SIGINT, SignalHandlerSigint);
     SignalHandlerSetup(SIGTERM, SignalHandlerSigterm);
 
-#ifndef OS_WIN32
 	/* SIGHUP is not implemnetd on WIN32 */
     //SignalHandlerSetup(SIGHUP, SignalHandlerSighup);
     //TODO Check Point 11
@@ -978,7 +740,6 @@ int main(int argc, char **argv)
 
         sc_set_caps = TRUE;
     }
-#endif /* OS_WIN32 */
     //TODO Check Point 12
     /* pre allocate packets */
     SCLogDebug("preallocating packets... packet size %" PRIuMAX "", (uintmax_t)sizeof(Packet));
@@ -1020,9 +781,6 @@ int main(int argc, char **argv)
     SCProfilingInitRuleCounters(de_ctx);
 #endif /* PROFILING */
 
-#ifdef __SC_CUDA_SUPPORT__
-    SCCudaPBSetUpQueuesAndBuffers();
-#endif /* __SC_CUDA_SUPPORT__ */
 
     AppLayerHtpRegisterExtraCallbacks();
     SCThresholdConfInitContext(de_ctx,NULL);
@@ -1036,54 +794,15 @@ int main(int argc, char **argv)
     RunModeInitializeOutputs();
     //TODO Check Point 16
     /* run the selected runmode */
-    if (run_mode == MODE_PCAP_DEV) {
-        //RunModeIdsPcap3(de_ctx, pcap_dev);
-        //RunModeIdsPcap2(de_ctx, pcap_dev);
-        //RunModeIdsPcap(de_ctx, pcap_dev);
-        PcapTranslateIPToDevice(pcap_dev, sizeof(pcap_dev));
-        RunModeIdsPcapAuto(de_ctx, pcap_dev);
-    }
-    else if (run_mode == MODE_PCAP_FILE) {
-        //RunModeFilePcap(de_ctx, pcap_file);
-        //RunModeFilePcap2(de_ctx, pcap_file);
-        RunModeFilePcapAuto(de_ctx, pcap_file);
-        //RunModeFilePcapAutoFp(de_ctx, pcap_file);
-        //RunModeFilePcapAuto2(de_ctx, pcap_file);
-    }
-    else if (run_mode == MODE_PFRING) {
-        //RunModeIdsPfring3(de_ctx, pfring_dev);
-        //RunModeIdsPfring2(de_ctx, pfring_dev);
-        //RunModeIdsPfring(de_ctx, pfring_dev);
-        //RunModeIdsPfring4(de_ctx, pfring_dev);
-        RunModeIdsPfringAuto(de_ctx, pfring_dev);
-    }
+
     //TODO Check Point 17
-    else if (run_mode == MODE_NFQ) {
-        //RunModeIpsNFQ(de_ctx, nfq_id);
+    if (run_mode == MODE_NFQ) {
         RunModeIpsNFQAuto(de_ctx, nfq_id);
-    }
-    else if (run_mode == MODE_IPFW) {
-        //RunModeIpsIPFW(de_ctx);
-        RunModeIpsIPFWAuto(de_ctx);
-    }
-    else if (run_mode == MODE_ERF_FILE) {
-        RunModeErfFileAuto(de_ctx, erf_file);
-    }
-    else if (run_mode == MODE_DAG) {
-        RunModeErfDagAuto(de_ctx, dag_input);
     }
     else {
         SCLogError(SC_ERR_UNKNOWN_RUN_MODE, "Unknown runtime mode. Aborting");
         exit(EXIT_FAILURE);
     }
-
-#ifdef __SC_CUDA_SUPPORT__
-    if (PatternMatchDefaultMatcher() == MPM_B2G_CUDA) {
-        /* start the dispatcher thread for this module */
-        if (B2gCudaStartDispatcherThreadRC("SC_RULES_CONTENT_B2G_CUDA") == -1)
-            exit(EXIT_FAILURE);
-    }
-#endif
 
     /* Spawn the flow manager thread */
     FlowManagerThreadSpawn();
@@ -1151,10 +870,6 @@ int main(int argc, char **argv)
 
             SCLogInfo("time elapsed %" PRIuMAX "s", (uintmax_t)(end_time.tv_sec - start_time.tv_sec));
 
-#ifdef __SC_CUDA_SUPPORT__
-            SCCudaPBKillBatchingPackets();
-#endif
-
             TmThreadKillThreads();
             SCPerfReleaseResources();
             break;
@@ -1182,29 +897,7 @@ int main(int argc, char **argv)
     SCPidfileRemove(pid_filename);
 
     /** \todo review whats needed here */
-#ifdef __SC_CUDA_SUPPORT__
-    if (PatternMatchDefaultMatcher() == MPM_B2G_CUDA) {
-        /* all threadvars related to cuda should be free by now, which means
-         * the cuda contexts would be floating */
-        if (SCCudaHlPushCudaContextFromModule("SC_RULES_CONTENT_B2G_CUDA") == -1) {
-            SCLogError(SC_ERR_CUDA_HANDLER_ERROR, "Call to "
-                       "SCCudaHlPushCudaContextForModule() failed during the "
-                       "shutdown phase just before the call to SigGroupCleanup()");
-        }
-    }
-#endif
     SigGroupCleanup(de_ctx);
-#ifdef __SC_CUDA_SUPPORT__
-    if (PatternMatchDefaultMatcher() == MPM_B2G_CUDA) {
-        /* pop the cuda context we just pushed before the call to SigGroupCleanup() */
-        if (SCCudaCtxPopCurrent(NULL) == -1) {
-            SCLogError(SC_ERR_CUDA_HANDLER_ERROR, "Call to SCCudaCtxPopCurrent() "
-                       "during the shutdown phase just before the call to "
-                       "SigGroupCleanup()");
-            return 0;
-        }
-    }
-#endif
 
     SigCleanSignatures(de_ctx);
     DetectEngineCtxFree(de_ctx);
@@ -1221,18 +914,5 @@ int main(int argc, char **argv)
         SCProfilingDump(stdout);
     SCProfilingDestroy();
 #endif
-
-#ifdef __SC_CUDA_SUPPORT__
-    /* all cuda contexts attached to any threads should be free by now.
-     * if any host_thread is still attached to any cuda_context, they need
-     * to pop them by the time we reach here, if they aren't using those
-     * cuda contexts in any way */
-    SCCudaHlDeRegisterAllRegisteredModules();
-#endif
-#ifdef OS_WIN32
-	if (daemon) {
-		return 0;
-	}
-#endif /* OS_WIN32 */
     exit(EXIT_SUCCESS);
 }

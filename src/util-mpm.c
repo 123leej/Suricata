@@ -30,7 +30,6 @@
 /* include pattern matchers */
 #include "util-mpm-wumanber.h"
 #include "util-mpm-b2g.h"
-#include "util-mpm-b2g-cuda.h"
 #include "util-mpm-b3g.h"
 #include "util-hashlist.h"
 

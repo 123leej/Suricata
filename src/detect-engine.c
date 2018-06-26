@@ -78,7 +78,7 @@ DetectEngineCtx *DetectEngineCtxInit(void) {
     DetectPortDpHashInit(de_ctx);
     ThresholdHashInit(de_ctx);
     VariableNameInitHash();
-    DetectParseDupSigHashInit(de_ctx);
+    DetectParseDupSigHashInit(de_ctx); 
 
     de_ctx->mpm_pattern_id_store = MpmPatternIdTableInitHash();
     if (de_ctx->mpm_pattern_id_store == NULL) {

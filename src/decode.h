@@ -38,7 +38,6 @@
 
 #include "source-nfq.h"
 
-#include "source-pcap.h"
 #include "action-globals.h"
 
 #include "decode-ethernet.h"
@@ -57,9 +56,6 @@
 
 #include "detect-reference.h"
 
-#ifdef __SC_CUDA_SUPPORT__
-#define CUDA_MAX_PAYLOAD_SIZE 1500
-#endif
 
 /* forward declaration */
 struct DetectionEngineThreadCtx_;
