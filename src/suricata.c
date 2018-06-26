@@ -281,43 +281,16 @@ void usage(const char *progname)
 #ifdef NFQ
     printf("\t-q <qid>                     : run in inline nfqueue mode\n");
 #endif /* NFQ */
-#ifdef IPFW
-    printf("\t-d <divert port>             : run in inline ipfw divert mode\n");
-#endif /* IPFW */
     printf("\t-s <path>                    : path to signature file (optional)\n");
     printf("\t-l <dir>                     : default log directory\n");
-#ifndef OS_WIN32
     printf("\t-D                           : run as daemon\n");
-#else
-	printf("\t--service-install            : install as service\n");
-	printf("\t--service-remove             : remove service\n");
-	printf("\t--service-change-params      : change service startup parameters\n");
-#endif /* OS_WIN32 */
-#ifdef UNITTESTS
-    printf("\t-u                           : run the unittests and exit\n");
-    printf("\t-U, --unittest-filter=REGEX  : filter unittests with a regex\n");
-    printf("\t--list-unittests             : list unit tests\n");
-    printf("\t--fatal-unittests            : enable fatal failure on unittest error\n");
-#endif /* UNITTESTS */
+
     printf("\t--pidfile <file>             : write pid to this file (only for daemon mode)\n");
     printf("\t--init-errors-fatal          : enable fatal failure on signature init error\n");
     printf("\t--dump-config                : show the running configuration\n");
-#ifdef HAVE_PCAP_SET_BUFF
-    printf("\t--pcap-buffer-size           : size of the pcap buffer value from 0 - %i\n",INT_MAX);
-#endif /* HAVE_SET_PCAP_BUFF */
-#ifdef HAVE_PFRING
-    printf("\t--pfring-int <dev>           : run in pfring mode\n");
-    printf("\t--pfring-cluster-id <id>     : pfring cluster id \n");
-    printf("\t--pfring-cluster-type <type> : pfring cluster type for PF_RING 4.1.2 and later cluster_round_robin|cluster_flow\n");
-#endif /* HAVE_PFRING */
-#ifdef HAVE_LIBCAP_NG
-    printf("\t--user <user>                : run suricata as this user after init\n");
-    printf("\t--group <group>              : run suricata as this group after init\n");
-#endif /* HAVE_LIBCAP_NG */
+
     printf("\t--erf-in <path>              : process an ERF file\n");
-#ifdef HAVE_DAG
-    printf("\t--dag <dag0,dag1,...>        : process ERF records from 0,1,...,n DAG input streams\n");
-#endif
+
     printf("\n");
     printf("\nTo run the engine with default configuration on "
             "interface eth0 with signature file \"signatures.rules\", run the "
@@ -450,18 +423,14 @@ int main(int argc, char **argv)
                 exit(EXIT_FAILURE);
             }
             else if(strcmp((long_opts[option_index]).name, "user") == 0) {
-#ifndef HAVE_LIBCAP_NG
                 SCLogError(SC_ERR_LIBCAP_NG_REQUIRED, "libcap-ng is required to"
                         " drop privileges, but it was not compiled into Suricata.");
                 exit(EXIT_FAILURE);
-#endif /* HAVE_LIBCAP_NG */
             }
             else if(strcmp((long_opts[option_index]).name, "group") == 0) {
-#ifndef HAVE_LIBCAP_NG
                 SCLogError(SC_ERR_LIBCAP_NG_REQUIRED, "libcap-ng is required to"
                         " drop privileges, but it was not compiled into Suricata.");
                 exit(EXIT_FAILURE);
-#endif /* HAVE_LIBCAP_NG */
             }
             else if (strcmp((long_opts[option_index]).name, "erf-in") == 0) {
                 run_mode = MODE_ERF_FILE;
@@ -511,7 +480,6 @@ int main(int argc, char **argv)
                 exit(EXIT_FAILURE);
             }
             break;
-        //TODO Check Point 1
         case 'q':
 #ifdef NFQ
             if (run_mode == MODE_UNKNOWN) {
