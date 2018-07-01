@@ -59,8 +59,6 @@
 
 #ifdef HAVE_SYSLOG_H
 #include <syslog.h>
-#else
-#include "win32-syslog.h"
 #endif /* HAVE_SYSLOG_H */
 
 #ifdef OS_WIN32

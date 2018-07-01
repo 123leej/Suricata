@@ -211,9 +211,6 @@ void MpmTableSetup(void) {
 
     MpmWuManberRegister();
     MpmB2gRegister();
-#ifdef __SC_CUDA_SUPPORT__
-    MpmB2gCudaRegister();
-#endif
     MpmB3gRegister();
 }
 

@@ -188,9 +188,6 @@ uint8_t print_mem_flag = 1;
 static void
 SignalHandlerSetup(int sig, void (*handler)())
 {
-#if defined (OS_WIN32)
-	signal(sig, handler);
-#else
     struct sigaction action;
 
     action.sa_handler = handler;
@@ -198,7 +195,6 @@ SignalHandlerSetup(int sig, void (*handler)())
     sigaddset(&(action.sa_mask),sig);
     action.sa_flags = 0;
     sigaction(sig, &action, 0);
-#endif /* OS_WIN32 */
 }
 
 void GlobalInits()
@@ -278,9 +274,7 @@ void usage(const char *progname)
     printf("\t-c <path>                    : path to configuration file\n");
     printf("\t-i <dev or ip>               : run in pcap live mode\n");
     printf("\t-r <path>                    : run in pcap file/offline mode\n");
-#ifdef NFQ
     printf("\t-q <qid>                     : run in inline nfqueue mode\n");
-#endif /* NFQ */
     printf("\t-s <path>                    : path to signature file (optional)\n");
     printf("\t-l <dir>                     : default log directory\n");
     printf("\t-D                           : run as daemon\n");
@@ -331,32 +325,6 @@ int main(int argc, char **argv)
     /* initialize the logging subsys */
     SCLogInitLogModule(NULL);
 
-#ifdef OS_WIN32
-	/* service initialization */
-	if (SCRunningAsService()) {
-		char path[MAX_PATH];
-		char *p = NULL;
-		strlcpy(path, argv[0], MAX_PATH);
-		if ((p = strrchr(path, '\\'))) {
-			*p = '\0';
-		}
-		if (!SetCurrentDirectory(path)) {
-			SCLogError(SC_ERR_FATAL, "Can't set current directory to: %s", path);
-			return -1;
-		}
-		SCLogInfo("Current directory is set to: %s", path);
-		daemon = 1;
-		SCServiceInit(argc, argv);
-	}
-
-	/* Windows socket subsystem initialization */
-	WSADATA wsaData;
-	if (0 != WSAStartup(MAKEWORD(2, 2), &wsaData)) {
-		SCLogError(SC_ERR_FATAL, "Can't initialize Windows sockets: %d", WSAGetLastError());
-		exit(EXIT_FAILURE);
-	}
-#endif /* OS_WIN32 */
-
     SCLogInfo("This is %s version %s", PROG_NAME, PROG_VER);
 
     /* Initialize the configuration module. */
@@ -370,11 +338,6 @@ int main(int argc, char **argv)
         {"pcap-buffer-size", required_argument, 0, 0},
         {"unittest-filter", required_argument, 0, 'U'},
         {"list-unittests", 0, &list_unittests, 1},
-#ifdef OS_WIN32
-		{"service-install", 0, 0, 0},
-		{"service-remove", 0, 0, 0},
-		{"service-change-params", 0, 0, 0},
-#endif /* OS_WIN32 */
         {"pidfile", required_argument, 0, 0},
         {"init-errors-fatal", 0, 0, 0},
         {"fatal-unittests", 0, 0, 0},
@@ -481,7 +444,6 @@ int main(int argc, char **argv)
             }
             break;
         case 'q':
-#ifdef NFQ
             if (run_mode == MODE_UNKNOWN) {
                 run_mode = MODE_NFQ;
             } else {
@@ -491,10 +453,6 @@ int main(int argc, char **argv)
                 exit(EXIT_SUCCESS);
             }
             nfq_id = optarg;
-#else
-            SCLogError(SC_ERR_NFQ_NOSUPPORT,"NFQUEUE not enabled. Make sure to pass --enable-nfqueue to configure when building.");
-            exit(EXIT_FAILURE);
-#endif /* NFQ */
             break;
         case 'd':
             SCLogError(SC_ERR_IPFW_NOSUPPORT,"IPFW not enabled. Make sure to pass --enable-ipfw to configure when building.");
@@ -536,12 +494,10 @@ int main(int argc, char **argv)
     if (!CheckValidDaemonModes(daemon, run_mode)) {
         exit(EXIT_FAILURE);
     }
-    //TODO Check Point 2
     /* Initializations for global vars, queues, etc (memsets, mutex init..) */
     GlobalInits();
     TimeInit();
 
-    //TODO Check Point 3
     /* Load yaml configuration file if provided. */
     if (conf_filename != NULL) {
         if (ConfYamlLoadFile(conf_filename) != 0) {
@@ -559,7 +515,6 @@ int main(int argc, char **argv)
         exit(EXIT_SUCCESS);
     }
 
-    //TODO Check Point 4
     /* Check for the existance of the default logging directory which we pick
      * from suricata.yaml.  If not found, shut the engine down */
     if (ConfGet("default-log-dir", &log_dir) != 1)
@@ -571,19 +526,16 @@ int main(int argc, char **argv)
         exit(EXIT_FAILURE);
     }
 
-    //TODO Check Point 5
     /* Pull the max pending packets from the config, if not found fall
      * back on a sane default. */
     if (ConfGetInt("max-pending-packets", &max_pending_packets) != 1)
         max_pending_packets = DEFAULT_MAX_PENDING_PACKETS;
     SCLogDebug("Max pending packets set to %"PRIiMAX, max_pending_packets);
 
-    //TODO Check Point 6
     /* Since our config is now loaded we can finish configurating the
      * logging module. */
     SCLogLoadConfig();
 
-    //TODO Check Point 7
     /* Load the Host-OS lookup. */
     SCHInfoLoadFromConfig();
 
@@ -602,7 +554,6 @@ int main(int argc, char **argv)
            g_u8_lowercasetable[c] = c;
     }
 
-    //TODO Check Point 8
     /* hardcoded initialization code */
     MpmTableSetup(); /* load the pattern matchers */
     SigTableSetup(); /* load the rule keywords */
@@ -616,7 +567,6 @@ int main(int argc, char **argv)
     SCProfilingInit();
 #endif /* PROFILING */
 
-    //TODO Check Point 9
     SCReputationInitCtx();
 
     TagInitCtx();
@@ -624,15 +574,6 @@ int main(int argc, char **argv)
     TmModuleReceiveNFQRegister();
     TmModuleVerdictNFQRegister();
     TmModuleDecodeNFQRegister();
-    TmModuleReceiveIPFWRegister();
-    TmModuleVerdictIPFWRegister();
-    TmModuleDecodeIPFWRegister();
-    TmModuleReceivePcapRegister();
-    TmModuleDecodePcapRegister();
-    TmModuleReceivePfringRegister();
-    TmModuleDecodePfringRegister();
-    TmModuleReceivePcapFileRegister();
-    TmModuleDecodePcapFileRegister();
     TmModuleDetectRegister();
     TmModuleAlertFastLogRegister();
     TmModuleAlertDebugLogRegister();
@@ -647,10 +588,6 @@ int main(int argc, char **argv)
     TmModuleLogHttpLogRegister();
     TmModuleLogHttpLogIPv4Register();
     TmModuleLogHttpLogIPv6Register();
-    TmModuleReceiveErfFileRegister();
-    TmModuleDecodeErfFileRegister();
-    TmModuleReceiveErfDagRegister();
-    TmModuleDecodeErfDagRegister();
     TmModuleDebugList();
 
     /** \todo we need an api for these */
@@ -665,7 +602,6 @@ int main(int argc, char **argv)
     RegisterSSLParsers();
     AppLayerParsersInitPostProcess();
 
-    //TODO Check Point 10
     if (daemon == 1) {
         Daemonize();
         if (pid_filename != NULL) {
@@ -683,14 +619,12 @@ int main(int argc, char **argv)
         }
     }
 
-    //TODO Check Point 11
     /* registering signals we use */
     SignalHandlerSetup(SIGINT, SignalHandlerSigint);
     SignalHandlerSetup(SIGTERM, SignalHandlerSigterm);
 
 	/* SIGHUP is not implemnetd on WIN32 */
     //SignalHandlerSetup(SIGHUP, SignalHandlerSighup);
-    //TODO Check Point 11
     /* Get the suricata user ID to given user ID */
     if (do_setuid == TRUE) {
         if (SCGetUserID(user_name, group_name, &userid, &groupid) != 0) {
@@ -708,7 +642,6 @@ int main(int argc, char **argv)
 
         sc_set_caps = TRUE;
     }
-    //TODO Check Point 12
     /* pre allocate packets */
     SCLogDebug("preallocating packets... packet size %" PRIuMAX "", (uintmax_t)sizeof(Packet));
     int i = 0;
@@ -733,7 +666,6 @@ int main(int argc, char **argv)
     SCClassConfLoadClassficationConfigFile(de_ctx);
 
     ActionInitConfig();
-    //TODO Check Point 13
     if (SigLoadSignatures(de_ctx, sig_file) < 0) {
         if (sig_file == NULL) {
             SCLogError(SC_ERR_OPENING_FILE, "Signature file has not been provided");
@@ -756,14 +688,10 @@ int main(int argc, char **argv)
     struct timeval start_time;
     memset(&start_time, 0, sizeof(start_time));
     gettimeofday(&start_time, NULL);
-    //TODO Check Point 14
     SCDropMainThreadCaps(userid, groupid);
-    //TODO Check Point 15
     RunModeInitializeOutputs();
-    //TODO Check Point 16
-    /* run the selected runmode */
 
-    //TODO Check Point 17
+    /* run the selected runmode */
     if (run_mode == MODE_NFQ) {
         RunModeIpsNFQAuto(de_ctx, nfq_id);
     }
@@ -778,9 +706,6 @@ int main(int argc, char **argv)
     StreamTcpInitConfig(STREAM_VERBOSE);
     DefragInit();
 
-    /* Spawn the L7 App Detect thread */
-    //AppLayerDetectProtoThreadSpawn();
-
     /* Spawn the perf counter threads.  Let these be the last one spawned */
     SCPerfSpawnThreads();
 
@@ -793,7 +718,6 @@ int main(int argc, char **argv)
                    "aborting...");
         exit(EXIT_FAILURE);
     }
-    //TODO Check Point 18
     /* Un-pause all the paused threads */
     TmThreadContinueThreads();
 

@@ -55,9 +55,6 @@ enum {
 
     MPM_WUMANBER,
     MPM_B2G,
-#ifdef __SC_CUDA_SUPPORT__
-    MPM_B2G_CUDA,
-#endif
     MPM_B3G,
 
     /* table size */

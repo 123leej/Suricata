@@ -54,11 +54,7 @@
           eachother. */
 //#define PM   MPM_WUMANBER
 //#define PM   MPM_B2G
-#ifdef __SC_CUDA_SUPPORT__
-#define PM   MPM_B2G_CUDA
-#else
 #define PM   MPM_B2G
-#endif
 //#define PM   MPM_B3G
 
 /* holds the string-enum mapping for the enums that define the different MPM
@@ -67,9 +63,6 @@ SCEnumCharMap sc_mpm_algo_map[] = {
     { "b2g",      MPM_B2G },
     { "b3g",      MPM_B3G },
     { "wumanber", MPM_WUMANBER },
-#ifdef __SC_CUDA_SUPPORT__
-    { "b2g_cuda", MPM_B2G_CUDA },
-#endif
 };
 
 
@@ -109,38 +102,11 @@ uint32_t PacketPatternSearch(ThreadVars *tv, DetectEngineThreadCtx *det_ctx,
 
     uint32_t ret;
 
-#ifndef __SC_CUDA_SUPPORT__
     ret = mpm_table[det_ctx->sgh->mpm_ctx->mpm_type].Search(det_ctx->sgh->mpm_ctx,
                                                             &det_ctx->mtc,
                                                             &det_ctx->pmq,
                                                             p->payload,
                                                             p->payload_len);
-#else
-    /* if the user has enabled cuda support, but is not using the cuda mpm
-     * algo, then we shouldn't take the path of the dispatcher.  Call the mpm
-     * directly */
-    if (det_ctx->sgh->mpm_ctx->mpm_type != MPM_B2G_CUDA) {
-        ret = mpm_table[det_ctx->sgh->mpm_ctx->mpm_type].Search(det_ctx->sgh->mpm_ctx,
-                                                                &det_ctx->mtc,
-                                                                &det_ctx->pmq,
-                                                                p->payload,
-                                                                p->payload_len);
-        SCReturnInt(ret);
-    }
-
-    if (p->cuda_mpm_enabled) {
-        ret = B2gCudaResultsPostProcessing(p, det_ctx->sgh->mpm_ctx,
-                                           &det_ctx->mtc, &det_ctx->pmq);
-    } else {
-        ret = mpm_table[det_ctx->sgh->mpm_ctx->mpm_type].Search(det_ctx->sgh->mpm_ctx,
-                                                                &det_ctx->mtc,
-                                                                &det_ctx->pmq,
-                                                                p->payload,
-                                                                p->payload_len);
-    }
-
-#endif
-
     SCReturnInt(ret);
 }
 
@@ -745,22 +711,14 @@ int PatternMatchPrepareGroup(DetectEngineCtx *de_ctx, SigGroupHead *sh)
             goto error;
 
         memset(sh->mpm_ctx, 0x00, sizeof(MpmCtx));
-#ifndef __SC_CUDA_SUPPORT__
         MpmInitCtx(sh->mpm_ctx, de_ctx->mpm_matcher, -1);
-#else
-        MpmInitCtx(sh->mpm_ctx, de_ctx->mpm_matcher, de_ctx->cuda_rc_mod_handle);
-#endif
         //if (sh->flags & SIG_GROUP_HAVESTREAMCONTENT && !(sh->flags & SIG_GROUP_HEAD_MPM_STREAM_COPY)) {
             sh->mpm_stream_ctx = SCMalloc(sizeof(MpmCtx));
             if (sh->mpm_stream_ctx == NULL)
                 goto error;
 
             memset(sh->mpm_stream_ctx, 0x00, sizeof(MpmCtx));
-#ifndef __SC_CUDA_SUPPORT__
             MpmInitCtx(sh->mpm_stream_ctx, de_ctx->mpm_matcher, -1);
-#else
-            MpmInitCtx(sh->mpm_stream_ctx, de_ctx->mpm_matcher, de_ctx->cuda_rc_mod_handle);
-#endif
         //}
 
     }
@@ -770,11 +728,7 @@ int PatternMatchPrepareGroup(DetectEngineCtx *de_ctx, SigGroupHead *sh)
             goto error;
 
         memset(sh->mpm_uri_ctx, 0x00, sizeof(MpmCtx));
-#ifndef __SC_CUDA_SUPPORT__
         MpmInitCtx(sh->mpm_uri_ctx, de_ctx->mpm_matcher, -1);
-#else
-        MpmInitCtx(sh->mpm_uri_ctx, de_ctx->mpm_matcher, de_ctx->cuda_rc_mod_handle);
-#endif
     }
 
     uint32_t mpm_content_cnt = 0, mpm_uricontent_cnt = 0;
