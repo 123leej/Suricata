@@ -41,18 +41,12 @@
 #include "action-globals.h"
 
 #include "decode-ethernet.h"
-#include "decode-gre.h"
-#include "decode-ppp.h"
-#include "decode-pppoe.h"
 #include "decode-sll.h"
 #include "decode-ipv4.h"
 #include "decode-ipv6.h"
-#include "decode-icmpv4.h"
-#include "decode-icmpv6.h"
 #include "decode-tcp.h"
 #include "decode-udp.h"
 #include "decode-raw.h"
-#include "decode-vlan.h"
 
 #include "detect-reference.h"
 
@@ -180,8 +174,6 @@ typedef uint16_t Port;
 #define PKT_IS_IPV6(p)      (((p)->ip6h != NULL))
 #define PKT_IS_TCP(p)       (((p)->tcph != NULL))
 #define PKT_IS_UDP(p)       (((p)->udph != NULL))
-#define PKT_IS_ICMPV4(p)    (((p)->icmpv4h != NULL))
-#define PKT_IS_ICMPV6(p)    (((p)->icmpv6h != NULL))
 #define PKT_IS_TOSERVER(p)  (((p)->flowflags & FLOW_PKT_TOSERVER))
 #define PKT_IS_TOCLIENT(p)  (((p)->flowflags & FLOW_PKT_TOCLIENT))
 
@@ -312,20 +304,6 @@ typedef struct Packet_
     UDPVars udpvars;
     UDPCache udpc;
 
-    ICMPV4Hdr *icmpv4h;
-    ICMPV4Cache icmpv4c;
-    ICMPV4Vars icmpv4vars;
-
-    ICMPV6Hdr *icmpv6h;
-    ICMPV6Cache icmpv6c;
-    ICMPV6Vars icmpv6vars;
-
-    PPPHdr *ppph;
-    PPPOESessionHdr *pppoesh;
-    PPPOEDiscoveryHdr *pppoedh;
-
-    GREHdr *greh;
-
     VLANHdr *vlanh;
 
     /* ptr to the payload of the packet
@@ -366,26 +344,6 @@ typedef struct Packet_
                            * need to set the verdict on --
                            * It should always point to the lowest
                            * packet in a encapsulated packet */
-
-    /* required for cuda support */
-#ifdef __SC_CUDA_SUPPORT__
-    /* indicates if the cuda mpm would be conducted or a normal cpu mpm would
-     * be conduced on this packet.  If it is set to 0, the cpu mpm; else cuda mpm */
-    uint8_t cuda_mpm_enabled;
-    /* indicates if the cuda mpm has finished running the mpm and processed the
-     * results for this packet, assuming if cuda_mpm_enabled has been set for this
-     * packet */
-    uint16_t cuda_done;
-    /* used by the detect thread and the cuda mpm dispatcher thread.  The detect
-     * thread would wait on this cond var, if the cuda mpm dispatcher thread
-     * still hasn't processed the packet.  The dispatcher would use this cond
-     * to inform the detect thread(in case it is waiting on this packet), once
-     * the dispatcher is done processing the packet results */
-    SCMutex cuda_mutex;
-    SCCondT cuda_cond;
-    /* the extra 1 in the 1481, is to hold the no_of_matches from the mpm run */
-    uint16_t mpm_offsets[CUDA_MAX_PAYLOAD_SIZE + 1];
-#endif
 } Packet;
 
 typedef struct PacketQueue_ {
@@ -430,12 +388,6 @@ typedef struct DecodeThreadVars_
     uint16_t counter_raw;
     uint16_t counter_tcp;
     uint16_t counter_udp;
-    uint16_t counter_icmpv4;
-    uint16_t counter_icmpv6;
-    uint16_t counter_ppp;
-    uint16_t counter_gre;
-    uint16_t counter_vlan;
-    uint16_t counter_pppoe;
     uint16_t counter_avg_pkt_size;
     uint16_t counter_max_pkt_size;
 
@@ -455,28 +407,17 @@ typedef struct DecodeThreadVars_
         (p)->ip4c.comp_csum = -1;      \
         (p)->tcpc.comp_csum = -1;      \
         (p)->udpc.comp_csum = -1;      \
-        (p)->icmpv4c.comp_csum = -1;   \
-        (p)->icmpv6c.comp_csum = -1;   \
     } while (0)
 
 /**
  *  \brief Initialize a packet structure for use.
  */
-#ifndef __SC_CUDA_SUPPORT__
 #define PACKET_INITIALIZE(p) { \
     memset((p), 0x00, sizeof(Packet)); \
     SCMutexInit(&(p)->mutex_rtv_cnt, NULL); \
     PACKET_RESET_CHECKSUMS((p)); \
 }
-#else
-#define PACKET_INITIALIZE(p) { \
-    memset((p), 0x00, sizeof(Packet)); \
-    SCMutexInit(&(p)->mutex_rtv_cnt, NULL); \
-    PACKET_RESET_CHECKSUMS((p)); \
-    SCMutexInit(&(p)->cuda_mutex, NULL); \
-    SCCondInit(&(p)->cuda_cond, NULL); \
-}
-#endif
+
 
 
 /**
@@ -514,17 +455,6 @@ typedef struct DecodeThreadVars_
         if ((p)->udph != NULL) {                \
             CLEAR_UDP_PACKET((p));              \
         }                                       \
-        if ((p)->icmpv4h != NULL) {             \
-            CLEAR_ICMPV4_PACKET((p));           \
-        }                                       \
-        if ((p)->icmpv6h != NULL) {             \
-            CLEAR_ICMPV6_PACKET((p));           \
-        }                                       \
-        (p)->ppph = NULL;                       \
-        (p)->pppoesh = NULL;                    \
-        (p)->pppoedh = NULL;                    \
-        (p)->greh = NULL;                       \
-        (p)->vlanh = NULL;                      \
         (p)->payload = NULL;                    \
         (p)->payload_len = 0;                   \
         (p)->pktlen = 0;                        \
@@ -543,39 +473,17 @@ typedef struct DecodeThreadVars_
         PACKET_RESET_CHECKSUMS((p));            \
     } while (0)
 
-#ifndef __SC_CUDA_SUPPORT__
 #define PACKET_RECYCLE(p) PACKET_DO_RECYCLE((p))
-#else
-#define PACKET_RECYCLE(p) do {                  \
-    PACKET_DO_RECYCLE((p));                     \
-    SCMutexDestroy(&(p)->cuda_mutex);           \
-    SCCondDestroy(&(p)->cuda_cond);             \
-    SCMutexInit(&(p)->cuda_mutex, NULL);        \
-    SCCondInit(&(p)->cuda_cond, NULL);          \
-    PACKET_RESET_CHECKSUMS((p));                \
-} while(0)
-#endif
 
 /**
  *  \brief Cleanup a packet so that we can free it. No memset needed..
  */
-#ifndef __SC_CUDA_SUPPORT__
 #define PACKET_CLEANUP(p) do {                  \
         if ((p)->pktvar != NULL) {              \
             PktVarFree((p)->pktvar);            \
         }                                       \
         SCMutexDestroy(&(p)->mutex_rtv_cnt);    \
     } while (0)
-#else
-#define PACKET_CLEANUP(p) do {                  \
-    if ((p)->pktvar != NULL) {                  \
-        PktVarFree((p)->pktvar);                \
-    }                                           \
-    SCMutexDestroy(&(p)->mutex_rtv_cnt);        \
-    SCMutexDestroy(&(p)->cuda_mutex);           \
-    SCCondDestroy(&(p)->cuda_cond);             \
-} while(0)
-#endif
 
 
 /* macro's for setting the action
@@ -626,19 +534,12 @@ DecodeThreadVars *DecodeThreadVarsAlloc();
 /* decoder functions */
 void DecodeEthernet(ThreadVars *, DecodeThreadVars *, Packet *, uint8_t *, uint16_t, PacketQueue *);
 void DecodeSll(ThreadVars *, DecodeThreadVars *, Packet *, uint8_t *, uint16_t, PacketQueue *);
-void DecodePPP(ThreadVars *, DecodeThreadVars *, Packet *, uint8_t *, uint16_t, PacketQueue *);
-void DecodePPPOESession(ThreadVars *, DecodeThreadVars *, Packet *, uint8_t *, uint16_t, PacketQueue *);
-void DecodePPPOEDiscovery(ThreadVars *, DecodeThreadVars *, Packet *, uint8_t *, uint16_t, PacketQueue *);
 void DecodeTunnel(ThreadVars *, DecodeThreadVars *, Packet *, uint8_t *, uint16_t, PacketQueue *);
 void DecodeRaw(ThreadVars *, DecodeThreadVars *, Packet *, uint8_t *, uint16_t, PacketQueue *);
 void DecodeIPV4(ThreadVars *, DecodeThreadVars *, Packet *, uint8_t *, uint16_t, PacketQueue *);
 void DecodeIPV6(ThreadVars *, DecodeThreadVars *, Packet *, uint8_t *, uint16_t, PacketQueue *);
-void DecodeICMPV4(ThreadVars *, DecodeThreadVars *, Packet *, uint8_t *, uint16_t, PacketQueue *);
-void DecodeICMPV6(ThreadVars *, DecodeThreadVars *, Packet *, uint8_t *, uint16_t, PacketQueue *);
 void DecodeTCP(ThreadVars *, DecodeThreadVars *, Packet *, uint8_t *, uint16_t, PacketQueue *);
 void DecodeUDP(ThreadVars *, DecodeThreadVars *, Packet *, uint8_t *, uint16_t, PacketQueue *);
-void DecodeGRE(ThreadVars *, DecodeThreadVars *, Packet *, uint8_t *, uint16_t, PacketQueue *);
-void DecodeVLAN(ThreadVars *, DecodeThreadVars *, Packet *, uint8_t *, uint16_t, PacketQueue *);
 
 void AddressDebugPrint(Address *);
 
@@ -704,10 +605,7 @@ void AddressDebugPrint(Address *);
  * \todo we need more & maybe put them in a separate file? */
 #define LINKTYPE_ETHERNET   DLT_EN10MB
 #define LINKTYPE_LINUX_SLL  113
-#define LINKTYPE_PPP        9
 #define LINKTYPE_RAW        DLT_RAW
-#define PPP_OVER_GRE        11
-#define VLAN_OVER_GRE       13
 
 /*Packet Flags*/
 #define PKT_NOPACKET_INSPECTION         0x01    /**< Flag to indicate that packet header or contents should not be inspected*/

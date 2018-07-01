@@ -411,14 +411,6 @@ int AlertFastLogTest01()
     else
         result = 0;
 
-#ifdef __SC_CUDA_SUPPORT__
-    B2gCudaKillDispatcherThreadRC();
-    if (SCCudaHlPushCudaContextFromModule("SC_RULES_CONTENT_B2G_CUDA") == -1) {
-        printf("Call to SCCudaHlPushCudaContextForModule() failed\n");
-        return 0;
-    }
-#endif
-
     SigGroupCleanup(de_ctx);
     SigCleanSignatures(de_ctx);
     DetectEngineThreadCtxDeinit(&th_v, (void *)det_ctx);
@@ -478,14 +470,6 @@ int AlertFastLogTest02()
         result = 0;
     }
 
-#ifdef __SC_CUDA_SUPPORT__
-    B2gCudaKillDispatcherThreadRC();
-    if (SCCudaHlPushCudaContextFromModule("SC_RULES_CONTENT_B2G_CUDA") == -1) {
-        printf("Call to SCCudaHlPushCudaContextForModule() failed\n");
-        return 0;
-    }
-#endif
-
     SigGroupCleanup(de_ctx);
     SigCleanSignatures(de_ctx);
     DetectEngineThreadCtxDeinit(&th_v, (void *)det_ctx);
@@ -505,18 +489,8 @@ void AlertFastLogRegisterTests(void)
 
 #ifdef UNITTESTS
 
-#ifdef __SC_CUDA_SUPPORT__
-    UtRegisterTest("AlertFastLogCudaContextInit",
-            SCCudaHlTestEnvCudaContextInit, 1);
-#endif
-
     UtRegisterTest("AlertFastLogTest01", AlertFastLogTest01, 1);
     UtRegisterTest("AlertFastLogTest02", AlertFastLogTest02, 1);
-
-#ifdef __SC_CUDA_SUPPORT__
-    UtRegisterTest("AlertFastLogCudaContextDeInit",
-            SCCudaHlTestEnvCudaContextDeInit, 1);
-#endif
 
 #endif /* UNITTESTS */
 

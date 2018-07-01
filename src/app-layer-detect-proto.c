@@ -60,7 +60,6 @@
 
 /* undef __SC_CUDA_SUPPORT__.  We will get back to this later.  Need to
  * analyze the performance of cuda support for app layer */
-#undef __SC_CUDA_SUPPORT__
 
 /** global app layer detection context */
 AlpProtoDetectCtx alp_proto_ctx;
@@ -69,14 +68,8 @@ AlpProtoDetectCtx alp_proto_ctx;
 void AlpProtoInit(AlpProtoDetectCtx *ctx) {
     memset(ctx, 0x00, sizeof(AlpProtoDetectCtx));
 
-#ifndef __SC_CUDA_SUPPORT__
     MpmInitCtx(&ctx->toserver.mpm_ctx, MPM_B2G, -1);
     MpmInitCtx(&ctx->toclient.mpm_ctx, MPM_B2G, -1);
-#else
-    ctx->alp_content_module_handle = SCCudaHlRegisterModule("SC_ALP_CONTENT_B2G_CUDA");
-    MpmInitCtx(&ctx->toserver.mpm_ctx, MPM_B2G_CUDA, ctx->alp_content_module_handle);
-    MpmInitCtx(&ctx->toclient.mpm_ctx, MPM_B2G_CUDA, ctx->alp_content_module_handle);
-#endif
 
     memset(&ctx->toserver.map, 0x00, sizeof(ctx->toserver.map));
     memset(&ctx->toclient.map, 0x00, sizeof(ctx->toclient.map));
@@ -292,14 +285,6 @@ void AlpProtoFinalizeGlobal(AlpProtoDetectCtx *ctx) {
     mpm_table[ctx->toclient.mpm_ctx.mpm_type].Prepare(&ctx->toclient.mpm_ctx);
     mpm_table[ctx->toserver.mpm_ctx.mpm_type].Prepare(&ctx->toserver.mpm_ctx);
 
-#ifdef __SC_CUDA_SUPPORT__
-    CUcontext context;
-    if (SCCudaCtxPopCurrent(&context) == -1)
-        exit(EXIT_FAILURE);
-    if (B2gCudaStartDispatcherThreadAPC("SC_ALP_CONTENT_B2G_CUDA") == -1)
-        exit(EXIT_FAILURE);
-#endif
-
     /* tell the stream reassembler, that initially we only want chunks of size
        min_len */
     StreamMsgQueueSetMinInitChunkLen(FLOW_PKT_TOCLIENT, ctx->toclient.min_len);
@@ -457,32 +442,10 @@ uint16_t AppLayerDetectGetProto(AlpProtoDetectCtx *ctx, AlpProtoDetectThreadCtx 
     uint32_t cnt = 0;
 
     /* do the mpm search */
-#ifndef __SC_CUDA_SUPPORT__
     cnt = mpm_table[dir->mpm_ctx.mpm_type].Search(&dir->mpm_ctx,
                                                 &tdir->mpm_ctx,
                                                 &tdir->pmq, buf,
                                                 searchlen);
-#else
-    Packet *p = SCMalloc(sizeof(Packet));
-    if (p == NULL)
-        goto end;
-    memset(p, 0, sizeof(Packet));
-
-    p->cuda_done = 0;
-    p->cuda_free_packet = 1;
-    p->cuda_search = 0;
-    p->cuda_mpm_ctx = &dir->mpm_ctx;
-    p->cuda_mtc = &tdir->mpm_ctx;
-    p->cuda_pmq = &tdir->pmq;
-    p->payload = buf;
-    p->payload_len = searchlen;
-    B2gCudaPushPacketTo_tv_CMB2_APC(p);
-    SCMutexLock(&p->cuda_mutex_q);
-    SCCondWait(&p->cuda_cond_q, &p->cuda_mutex_q);
-    p->cuda_done = 1;
-    SCMutexUnlock(&p->cuda_mutex_q);
-    cnt = p->cuda_matches;
-#endif
     SCLogDebug("search cnt %" PRIu32 "", cnt);
     if (cnt == 0) {
         proto = ALPROTO_UNKNOWN;
@@ -638,14 +601,6 @@ int AlpDetectTest01(void) {
     int r = 1;
     AlpProtoDetectCtx ctx;
 
-#ifdef __SC_CUDA_SUPPORT__
-    B2gCudaKillDispatcherThreadAPC();
-    if (SCCudaHlPushCudaContextFromModule("SC_ALP_CONTENT_B2G_CUDA") == -1) {
-        printf("Call to SCCudaHlPushCudaContextForModule() failed\n");
-        return 0;
-    }
-#endif
-
     AlpProtoInit(&ctx);
 
     AlpProtoAdd(&ctx, IPPROTO_TCP, ALPROTO_HTTP, buf, 4, 0, STREAM_TOCLIENT);
@@ -664,13 +619,6 @@ int AlpDetectTest01(void) {
 
     AlpProtoTestDestroy(&ctx);
 
-#ifdef __SC_CUDA_SUPPORT__
-    if (SCCudaCtxPopCurrent(NULL) == -1) {
-        printf("Call to SCCudaCtxPopCurrent() failed\n");
-        return 0;
-    }
-#endif
-
     return r;
 }
 
@@ -678,14 +626,6 @@ int AlpDetectTest02(void) {
     char *buf = SCStrdup("HTTP");
     int r = 1;
     AlpProtoDetectCtx ctx;
-
-#ifdef __SC_CUDA_SUPPORT__
-    B2gCudaKillDispatcherThreadAPC();
-    if (SCCudaHlPushCudaContextFromModule("SC_ALP_CONTENT_B2G_CUDA") == -1) {
-        printf("Call to SCCudaHlPushCudaContextForModule() failed\n");
-        return 0;
-    }
-#endif
 
     AlpProtoInit(&ctx);
 
@@ -713,13 +653,6 @@ int AlpDetectTest02(void) {
     }
 
     AlpProtoTestDestroy(&ctx);
-
-#ifdef __SC_CUDA_SUPPORT__
-    if (SCCudaCtxPopCurrent(NULL) == -1) {
-        printf("Call to SCCudaCtxPopCurrent() failed\n");
-        return 0;
-    }
-#endif
 
     return r;
 }
@@ -731,13 +664,6 @@ int AlpDetectTest03(void) {
     AlpProtoDetectCtx ctx;
     AlpProtoDetectThreadCtx tctx;
 
-#ifdef __SC_CUDA_SUPPORT__
-    B2gCudaKillDispatcherThreadAPC();
-    if (SCCudaHlPushCudaContextFromModule("SC_ALP_CONTENT_B2G_CUDA") == -1) {
-        printf("Call to SCCudaHlPushCudaContextForModule() failed\n");
-        return 0;
-    }
-#endif
 
     AlpProtoInit(&ctx);
 
@@ -767,14 +693,6 @@ int AlpDetectTest03(void) {
     AlpProtoFinalizeGlobal(&ctx);
     AlpProtoFinalizeThread(&ctx, &tctx);
 
-#ifdef __SC_CUDA_SUPPORT__
-    B2gCudaKillDispatcherThreadAPC();
-    if (SCCudaHlPushCudaContextFromModule("SC_ALP_CONTENT_B2G_CUDA") == -1) {
-        printf("Call to SCCudaHlPushCudaContextForModule() failed\n");
-        return 0;
-    }
-#endif
-
     uint32_t cnt = mpm_table[ctx.toclient.mpm_ctx.mpm_type].Search(&ctx.toclient.mpm_ctx, &tctx.toclient.mpm_ctx, NULL, l7data, sizeof(l7data));
     if (cnt != 1) {
         printf("cnt %u != 1: ", cnt);
@@ -782,13 +700,6 @@ int AlpDetectTest03(void) {
     }
 
     AlpProtoTestDestroy(&ctx);
-
-#ifdef __SC_CUDA_SUPPORT__
-    if (SCCudaCtxPopCurrent(NULL) == -1) {
-        printf("Call to SCCudaCtxPopCurrent() failed\n");
-        return 0;
-    }
-#endif
 
     return r;
 }
@@ -799,14 +710,6 @@ int AlpDetectTest04(void) {
     int r = 1;
     AlpProtoDetectCtx ctx;
     AlpProtoDetectThreadCtx tctx;
-
-#ifdef __SC_CUDA_SUPPORT__
-    B2gCudaKillDispatcherThreadAPC();
-    if (SCCudaHlPushCudaContextFromModule("SC_ALP_CONTENT_B2G_CUDA") == -1) {
-        printf("Call to SCCudaHlPushCudaContextForModule() failed\n");
-        return 0;
-    }
-#endif
 
     AlpProtoInit(&ctx);
 
@@ -824,14 +727,6 @@ int AlpDetectTest04(void) {
     AlpProtoFinalizeGlobal(&ctx);
     AlpProtoFinalizeThread(&ctx, &tctx);
 
-#ifdef __SC_CUDA_SUPPORT__
-    B2gCudaKillDispatcherThreadAPC();
-    if (SCCudaHlPushCudaContextFromModule("SC_ALP_CONTENT_B2G_CUDA") == -1) {
-        printf("Call to SCCudaHlPushCudaContextForModule() failed\n");
-        return 0;
-    }
-#endif
-
     uint32_t cnt = mpm_table[ctx.toclient.mpm_ctx.mpm_type].Search(&ctx.toclient.mpm_ctx, &tctx.toclient.mpm_ctx, &tctx.toclient.pmq, l7data, sizeof(l7data));
     if (cnt != 1) {
         printf("cnt %u != 1: ", cnt);
@@ -839,13 +734,6 @@ int AlpDetectTest04(void) {
     }
 
     AlpProtoTestDestroy(&ctx);
-
-#ifdef __SC_CUDA_SUPPORT__
-    if (SCCudaCtxPopCurrent(NULL) == -1) {
-        printf("Call to SCCudaCtxPopCurrent() failed\n");
-        return 0;
-    }
-#endif
 
     return r;
 }
@@ -857,14 +745,6 @@ int AlpDetectTest05(void) {
 
     AlpProtoDetectCtx ctx;
     AlpProtoDetectThreadCtx tctx;
-
-#ifdef __SC_CUDA_SUPPORT__
-    B2gCudaKillDispatcherThreadAPC();
-    if (SCCudaHlPushCudaContextFromModule("SC_ALP_CONTENT_B2G_CUDA") == -1) {
-        printf("Call to SCCudaHlPushCudaContextForModule() failed\n");
-        return 0;
-    }
-#endif
 
     AlpProtoInit(&ctx);
 
@@ -900,22 +780,7 @@ int AlpDetectTest05(void) {
         r = 0;
     }
 
-#ifdef __SC_CUDA_SUPPORT__
-    B2gCudaKillDispatcherThreadAPC();
-    if (SCCudaHlPushCudaContextFromModule("SC_ALP_CONTENT_B2G_CUDA") == -1) {
-        printf("Call to SCCudaHlPushCudaContextForModule() failed\n");
-        return 0;
-    }
-#endif
-
     AlpProtoTestDestroy(&ctx);
-
-#ifdef __SC_CUDA_SUPPORT__
-    if (SCCudaCtxPopCurrent(NULL) == -1) {
-        printf("Call to SCCudaCtxPopCurrent() failed\n");
-        return 0;
-    }
-#endif
 
     return r;
 }
@@ -926,14 +791,6 @@ int AlpDetectTest06(void) {
     int r = 1;
     AlpProtoDetectCtx ctx;
     AlpProtoDetectThreadCtx tctx;
-
-#ifdef __SC_CUDA_SUPPORT__
-    B2gCudaKillDispatcherThreadAPC();
-    if (SCCudaHlPushCudaContextFromModule("SC_ALP_CONTENT_B2G_CUDA") == -1) {
-        printf("Call to SCCudaHlPushCudaContextForModule() failed\n");
-        return 0;
-    }
-#endif
 
     AlpProtoInit(&ctx);
 
@@ -969,22 +826,7 @@ int AlpDetectTest06(void) {
         r = 0;
     }
 
-#ifdef __SC_CUDA_SUPPORT__
-    B2gCudaKillDispatcherThreadAPC();
-    if (SCCudaHlPushCudaContextFromModule("SC_ALP_CONTENT_B2G_CUDA") == -1) {
-        printf("Call to SCCudaHlPushCudaContextForModule() failed\n");
-        return 0;
-    }
-#endif
-
     AlpProtoTestDestroy(&ctx);
-
-#ifdef __SC_CUDA_SUPPORT__
-    if (SCCudaCtxPopCurrent(NULL) == -1) {
-        printf("Call to SCCudaCtxPopCurrent() failed\n");
-        return 0;
-    }
-#endif
 
     return r;
 }
@@ -995,14 +837,6 @@ int AlpDetectTest07(void) {
     int r = 1;
     AlpProtoDetectCtx ctx;
     AlpProtoDetectThreadCtx tctx;
-
-#ifdef __SC_CUDA_SUPPORT__
-    B2gCudaKillDispatcherThreadAPC();
-    if (SCCudaHlPushCudaContextFromModule("SC_ALP_CONTENT_B2G_CUDA") == -1) {
-        printf("Call to SCCudaHlPushCudaContextForModule() failed\n");
-        return 0;
-    }
-#endif
 
     AlpProtoInit(&ctx);
 
@@ -1026,22 +860,7 @@ int AlpDetectTest07(void) {
         r = 0;
     }
 
-#ifdef __SC_CUDA_SUPPORT__
-    B2gCudaKillDispatcherThreadAPC();
-    if (SCCudaHlPushCudaContextFromModule("SC_ALP_CONTENT_B2G_CUDA") == -1) {
-        printf("Call to SCCudaHlPushCudaContextForModule() failed\n");
-        return 0;
-    }
-#endif
-
     AlpProtoTestDestroy(&ctx);
-
-#ifdef __SC_CUDA_SUPPORT__
-    if (SCCudaCtxPopCurrent(NULL) == -1) {
-        printf("Call to SCCudaCtxPopCurrent() failed\n");
-        return 0;
-    }
-#endif
 
     return r;
 }
@@ -1063,14 +882,6 @@ int AlpDetectTest08(void) {
     int r = 1;
     AlpProtoDetectCtx ctx;
     AlpProtoDetectThreadCtx tctx;
-
-#ifdef __SC_CUDA_SUPPORT__
-    B2gCudaKillDispatcherThreadAPC();
-    if (SCCudaHlPushCudaContextFromModule("SC_ALP_CONTENT_B2G_CUDA") == -1) {
-        printf("Call to SCCudaHlPushCudaContextForModule() failed\n");
-        return 0;
-    }
-#endif
 
     AlpProtoInit(&ctx);
 
@@ -1094,22 +905,7 @@ int AlpDetectTest08(void) {
         r = 0;
     }
 
-#ifdef __SC_CUDA_SUPPORT__
-    B2gCudaKillDispatcherThreadAPC();
-    if (SCCudaHlPushCudaContextFromModule("SC_ALP_CONTENT_B2G_CUDA") == -1) {
-        printf("Call to SCCudaHlPushCudaContextForModule() failed\n");
-        return 0;
-    }
-#endif
-
     AlpProtoTestDestroy(&ctx);
-
-#ifdef __SC_CUDA_SUPPORT__
-    if (SCCudaCtxPopCurrent(NULL) == -1) {
-        printf("Call to SCCudaCtxPopCurrent() failed\n");
-        return 0;
-    }
-#endif
 
     return r;
 }
@@ -1128,14 +924,6 @@ int AlpDetectTest09(void) {
     int r = 1;
     AlpProtoDetectCtx ctx;
     AlpProtoDetectThreadCtx tctx;
-
-#ifdef __SC_CUDA_SUPPORT__
-    B2gCudaKillDispatcherThreadAPC();
-    if (SCCudaHlPushCudaContextFromModule("SC_ALP_CONTENT_B2G_CUDA") == -1) {
-        printf("Call to SCCudaHlPushCudaContextForModule() failed\n");
-        return 0;
-    }
-#endif
 
     AlpProtoInit(&ctx);
 
@@ -1159,22 +947,8 @@ int AlpDetectTest09(void) {
         r = 0;
     }
 
-#ifdef __SC_CUDA_SUPPORT__
-    B2gCudaKillDispatcherThreadAPC();
-    if (SCCudaHlPushCudaContextFromModule("SC_ALP_CONTENT_B2G_CUDA") == -1) {
-        printf("Call to SCCudaHlPushCudaContextForModule() failed\n");
-        return 0;
-    }
-#endif
-
     AlpProtoTestDestroy(&ctx);
 
-#ifdef __SC_CUDA_SUPPORT__
-    if (SCCudaCtxPopCurrent(NULL) == -1) {
-        printf("Call to SCCudaCtxPopCurrent() failed\n");
-        return 0;
-    }
-#endif
     return r;
 }
 
@@ -1188,14 +962,6 @@ int AlpDetectTest10(void) {
     int r = 1;
     AlpProtoDetectCtx ctx;
     AlpProtoDetectThreadCtx tctx;
-
-#ifdef __SC_CUDA_SUPPORT__
-    B2gCudaKillDispatcherThreadAPC();
-    if (SCCudaHlPushCudaContextFromModule("SC_ALP_CONTENT_B2G_CUDA") == -1) {
-        printf("Call to SCCudaHlPushCudaContextForModule() failed\n");
-        return 0;
-    }
-#endif
 
     AlpProtoInit(&ctx);
 
@@ -1219,22 +985,7 @@ int AlpDetectTest10(void) {
         r = 0;
     }
 
-#ifdef __SC_CUDA_SUPPORT__
-    B2gCudaKillDispatcherThreadAPC();
-    if (SCCudaHlPushCudaContextFromModule("SC_ALP_CONTENT_B2G_CUDA") == -1) {
-        printf("Call to SCCudaHlPushCudaContextForModule() failed\n");
-        return 0;
-    }
-#endif
-
     AlpProtoTestDestroy(&ctx);
-
-#ifdef __SC_CUDA_SUPPORT__
-    if (SCCudaCtxPopCurrent(NULL) == -1) {
-        printf("Call to SCCudaCtxPopCurrent() failed\n");
-        return 0;
-    }
-#endif
 
     return r;
 }

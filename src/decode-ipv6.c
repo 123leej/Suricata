@@ -27,7 +27,6 @@
 #include "packet-queue.h"
 #include "decode.h"
 #include "decode-ipv6.h"
-#include "decode-icmpv6.h"
 #include "decode-events.h"
 #include "defrag.h"
 #include "util-debug.h"
@@ -66,11 +65,6 @@ DecodeIPV6ExtHdrs(ThreadVars *tv, DecodeThreadVars *dtv, Packet *p, uint8_t *pkt
             case IPPROTO_UDP:
                 IPV6_SET_L4PROTO(p,nh);
                 DecodeUDP(tv, dtv, p, pkt, plen, pq);
-                SCReturn;
-
-            case IPPROTO_ICMPV6:
-                IPV6_SET_L4PROTO(p,nh);
-                DecodeICMPV6(tv, dtv, p, pkt, plen, pq);
                 SCReturn;
 
             case IPPROTO_ROUTING:
@@ -439,8 +433,6 @@ void DecodeIPV6(ThreadVars *tv, DecodeThreadVars *dtv, Packet *p, uint8_t *pkt, 
         case IPPROTO_UDP:
             return DecodeUDP(tv, dtv, p, pkt + IPV6_HEADER_LEN, IPV6_GET_PLEN(p), pq);
             break;
-        case IPPROTO_ICMPV6:
-            return DecodeICMPV6(tv, dtv, p, pkt + IPV6_HEADER_LEN, IPV6_GET_PLEN(p), pq);
         case IPPROTO_FRAGMENT:
         case IPPROTO_HOPOPTS:
         case IPPROTO_ROUTING:
