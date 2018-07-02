@@ -226,6 +226,7 @@ int RunModeIpsNFQAuto(DetectEngineCtx *de_ctx, char *nfq_id) {
         printf("ERROR: TmThreadsCreate failed for Decode1\n");
         exit(EXIT_FAILURE);
     }
+    //11111
     //TODO LPWAN Protocol's layer ( PHY | MAC | APP ) Decode From PHY layer
     tm_module = TmModuleGetByName("DecodeNFQ");
     if (tm_module == NULL) {
