@@ -46,7 +46,6 @@
 #include "decode-ipv6.h"
 #include "decode-tcp.h"
 #include "decode-udp.h"
-#include "decode-raw.h"
 
 #include "detect-reference.h"
 
@@ -168,7 +167,6 @@ typedef uint16_t Port;
 
 /*Given a packet pkt offset to the start of the ip header in a packet
  *We determine the ip version. */
-#define IP_GET_RAW_VER(pkt) (((pkt[0] & 0xf0) >> 4))
 
 #define PKT_IS_IPV4(p)      (((p)->ip4h != NULL))
 #define PKT_IS_IPV6(p)      (((p)->ip6h != NULL))
@@ -385,7 +383,6 @@ typedef struct DecodeThreadVars_
     uint16_t counter_ipv6;
     uint16_t counter_eth;
     uint16_t counter_sll;
-    uint16_t counter_raw;
     uint16_t counter_tcp;
     uint16_t counter_udp;
     uint16_t counter_avg_pkt_size;
@@ -535,7 +532,6 @@ DecodeThreadVars *DecodeThreadVarsAlloc();
 void DecodeEthernet(ThreadVars *, DecodeThreadVars *, Packet *, uint8_t *, uint16_t, PacketQueue *);
 void DecodeSll(ThreadVars *, DecodeThreadVars *, Packet *, uint8_t *, uint16_t, PacketQueue *);
 void DecodeTunnel(ThreadVars *, DecodeThreadVars *, Packet *, uint8_t *, uint16_t, PacketQueue *);
-void DecodeRaw(ThreadVars *, DecodeThreadVars *, Packet *, uint8_t *, uint16_t, PacketQueue *);
 void DecodeIPV4(ThreadVars *, DecodeThreadVars *, Packet *, uint8_t *, uint16_t, PacketQueue *);
 void DecodeIPV6(ThreadVars *, DecodeThreadVars *, Packet *, uint8_t *, uint16_t, PacketQueue *);
 void DecodeTCP(ThreadVars *, DecodeThreadVars *, Packet *, uint8_t *, uint16_t, PacketQueue *);
@@ -605,7 +601,6 @@ void AddressDebugPrint(Address *);
  * \todo we need more & maybe put them in a separate file? */
 #define LINKTYPE_ETHERNET   DLT_EN10MB
 #define LINKTYPE_LINUX_SLL  113
-#define LINKTYPE_RAW        DLT_RAW
 
 /*Packet Flags*/
 #define PKT_NOPACKET_INSPECTION         0x01    /**< Flag to indicate that packet header or contents should not be inspected*/
