@@ -226,7 +226,7 @@ int RunModeIpsNFQAuto(DetectEngineCtx *de_ctx, char *nfq_id) {
         printf("ERROR: TmThreadsCreate failed for Decode1\n");
         exit(EXIT_FAILURE);
     }
-    //11111
+
     //TODO LPWAN Protocol's layer ( PHY | MAC | APP ) Decode From PHY layer
     tm_module = TmModuleGetByName("DecodeNFQ");
     if (tm_module == NULL) {
@@ -243,29 +243,6 @@ int RunModeIpsNFQAuto(DetectEngineCtx *de_ctx, char *nfq_id) {
     }
 
     if (TmThreadSpawn(tv_decode1) != TM_ECODE_OK) {
-        printf("ERROR: TmThreadSpawn failed\n");
-        exit(EXIT_FAILURE);
-    }
-
-    ThreadVars *tv_stream1 = TmThreadCreatePacketHandler("Stream1","decode-queue1","simple","stream-queue1","simple","1slot");
-    if (tv_stream1 == NULL) {
-        printf("ERROR: TmThreadsCreate failed for Stream1\n");
-        exit(EXIT_FAILURE);
-    }
-    tm_module = TmModuleGetByName("StreamTcp");
-    if (tm_module == NULL) {
-        printf("ERROR: TmModuleGetByName StreamTcp failed\n");
-        exit(EXIT_FAILURE);
-    }
-    Tm1SlotSetFunc(tv_stream1,tm_module,NULL);
-
-    if (threading_set_cpu_affinity) {
-        TmThreadSetCPUAffinity(tv_stream1, 0);
-        if (ncpus > 1)
-            TmThreadSetThreadPriority(tv_stream1, PRIO_MEDIUM);
-    }
-
-    if (TmThreadSpawn(tv_stream1) != TM_ECODE_OK) {
         printf("ERROR: TmThreadSpawn failed\n");
         exit(EXIT_FAILURE);
     }
@@ -288,7 +265,7 @@ int RunModeIpsNFQAuto(DetectEngineCtx *de_ctx, char *nfq_id) {
         char *thread_name = SCStrdup(tname);
         SCLogDebug("Assigning %s affinity to cpu %u", thread_name, cpu);
 
-        ThreadVars *tv_detect_ncpu = TmThreadCreatePacketHandler(thread_name,"stream-queue1","simple","verdict-queue","simple","1slot");
+        ThreadVars *tv_detect_ncpu = TmThreadCreatePacketHandler(thread_name,"decode-queue1","simple","verdict-queue","simple","1slot");
         if (tv_detect_ncpu == NULL) {
             printf("ERROR: TmThreadsCreate failed\n");
             exit(EXIT_FAILURE);
