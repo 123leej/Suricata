@@ -31,9 +31,10 @@
 
 
 typedef struct LorawanFrameHdr_ {
-    uint32_t dev_addr;
-    struct LorawanFrameCtrl fctl;
+    uint32_t dev_addr;                  /* DevAddr */
+    struct LorawanFrameCtrl *fctl;       /* Fctl */
     uint16_t fcnt;
+    uint
 
 } LorawanFrameHdr;
 
