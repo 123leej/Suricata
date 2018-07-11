@@ -33,18 +33,23 @@
 
 
 typedef struct LorawanFrameHdr_ {
-    uint32_t dev_addr;                  /* DevAddr */
-    struct LorawanFrameCtrl *fctl;       /* Fctl */
-    uint16_t fcnt;
-    uint
-
+    uint32_t dev_addr;                                      /* DevAddr */
+    struct LorawanFrameCtrl *fctl;                         /* Fctl */
+    uint16_t fcnt;                                          /* Fcnt */
+#ifdef LORAWAN_MAC_COMMAND
+    unsigned char* Fopts : 120;                           /* Fopts */
+#endif
 } LorawanFrameHdr;
+
+typedef struct LorawanFrameVars_ {
+    uint8_t fports;
+}LorawanFrameVars;
 
 typedef struct LorawanFrameCtrl_ {
     unsigned int address : 1;
     unsigned int address_ack_request : 1;
     unsigned int ack : 1;
-#ifdef uplink
+#ifdef UPLINK
     unsigned int fpending : 1;
 #else
     unsigned int rfu : 1;
