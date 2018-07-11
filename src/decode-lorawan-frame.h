@@ -13,6 +13,8 @@
 #define LORAWAN_FRAME_HEADER_LEN_MAX            15           /**< Header Maximum length */
 #define LORAWAN_FRAME_PORT_LEN                  1            /**< Frame Ports length */
 
+#define LORAWAN_FPORT_MAC_COMMAND               0x00
+
 /** Frame Options CID **/
 #define LINK_CHECK_REQ                          0x02         /**< Link Check Request from End-Device*/
 #define LINK_CHECK_ANS                          0x02         /**< Link Check Answer from GateWay*/
