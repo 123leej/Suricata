@@ -13,6 +13,8 @@
 #define LORAWAN_FRAME_HEADER_LEN_MAX            15           /**< Header Maximum length */
 #define LORAWAN_FRAME_PORT_LEN                  1            /**< Frame Ports length */
 
+#define LORAWAN_FPORT_MAC_COMMAND               0x00
+
 /** Frame Options CID **/
 #define LINK_CHECK_REQ                          0x02         /**< Link Check Request from End-Device*/
 #define LINK_CHECK_ANS                          0x02         /**< Link Check Answer from GateWay*/
@@ -31,17 +33,23 @@
 
 
 typedef struct LorawanFrameHdr_ {
-    uint32_t dev_addr;
-    struct LorawanFrameCtrl fctl;
-    uint16_t fcnt;
-
+    uint32_t dev_addr;                                      /* DevAddr */
+    struct LorawanFrameCtrl *fctl;                         /* Fctl */
+    uint16_t fcnt;                                          /* Fcnt */
+#ifdef LORAWAN_MAC_COMMAND
+    unsigned char* Fopts : 120;                           /* Fopts */
+#endif
 } LorawanFrameHdr;
+
+typedef struct LorawanFrameVars_ {
+    uint8_t fports;
+}LorawanFrameVars;
 
 typedef struct LorawanFrameCtrl_ {
     unsigned int address : 1;
     unsigned int address_ack_request : 1;
     unsigned int ack : 1;
-#ifdef uplink
+#ifdef UPLINK
     unsigned int fpending : 1;
 #else
     unsigned int rfu : 1;
