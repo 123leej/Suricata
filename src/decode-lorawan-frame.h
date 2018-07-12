@@ -56,5 +56,4 @@ typedef struct LorawanFrameCtrl_ {
 } LorawanFrameCtrl;
 
 
-
 #endif //SRC_DECODE_LORAWAN_FRAME_H

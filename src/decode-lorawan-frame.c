@@ -11,37 +11,44 @@
 
 
 
-static int DecodeLORAWANFrameControls(ThreadVars *tv, Packet *p, uint8_t *pkt, uint16_t len)
+static int DecodeLorawanFrameControls(ThreadVars *tv, Packet *p, uint8_t *pkt, uint16_t len)
 {
+    LORAWAN_FRAME_SET_FOPTS_LEN(p, pkt+len-LORAWAN_FRAME_FOPTSLEN_LEN);
+    LORAWAN_FRAME_SET_HEADER_LEN(LORAWAN_FRAME_HEADER_LEN_MIN + LORAWAN_FRAME_GET_FOPTS_LEN(p));
+
     return 0;
 }
 
 
-static int DecodeLORAWANFrameOptions(ThreadVars *tv, Packet *p, uint8_t *pkt, uint16_t len)
+static int DecodeLorawanFramePacket(ThreadVars *tv, Packet *p, uint8_t *pkt, uint16_t len)
 {
-    return 0;
-}
+    int ret;
 
-static int DecodeLORAWANFramePacket(ThreadVars *tv, Packet *p, uint8_t *pkt, uint16_t len)
-{
     if (len < LORAWAN_FRAME_HEADER_LEN_MIN) {
         DECODER_SET_EVENT(p,LORAWAN_PKT_TOO_SMALL);
         return -1;
     }
 
     p->lorafh = (LorawanFrame4Hdr *)pkt;
-    /*
-    if (LORAWAN_FRAME_GET_FCTL_LEN(p) < LORAWAN_FRAME_FCTL_LEN) {
-        DECODER_SET_EVENT(p,LORAWAN_FRAME_FCTL_TOO_SMALL);
+
+    ret = DecodeLorawanFrameControls(tv, p, p->lorawanfh->fctl, LORAWAN_FRAME_CTRL_LEN);
+
+    if (ret < 0) {
+        SCLogDebug("decoding Lorawan frame control failed");
+        p->lorawanfh = NULL;
         return -1;
     }
 
-    if (LORAWAN_FRAME_GET_FOPTS_LEN(p) + LORAWAN_FRAME_HEADER_LEN_MIN < LORAWAN_FRAME_HEADER_LEN)
-    */
-    DecodeLORAWANFrameControls(tv, p, pkt + LORAWAN_FRAME_DEVADDR_LEN, LORAWAN_FRAME_CTRL_LEN);
+    if (LORAWAN_FRAME_HEADER_LEN_MAX < LORAWAN_FRAME_GET_HEADER_LEN(p)) {
+        DECODER_SET_EVENT(p, LORAWAN_FRAME_HEADER_TOO_BIG);
+        return -1;
+    }
 
-    if (LORAWAN_FRAME_GET_HEADER_LEN(p) < LORAWAN_FRAME_HEADER_LEN) {
+    p->lorawan_frame_vars.fports = pkt + LORAWAN_FRAME_GET_HEADER_LEN(p);
 
+    if (len < LORAWAN_FRAME_GET_HEADER_LEN(p) + LORAWAN_FPORT_LEN) {
+        DECODER_SET_EVENT(p, LORAWAN_PKT_TOO_SMALL);
+        return -1;
     }
 
     if (len != LORAWAN_FRAME_GET_LEN(p)) {
@@ -49,40 +56,43 @@ static int DecodeLORAWANFramePacket(ThreadVars *tv, Packet *p, uint8_t *pkt, uin
         return -1;
     }
 
-
-    if (p->lorawanhdr.fctl.fopts_len > 0) {
-        DecodeLORAWANFrameOptions(tv, p, pkt + sizeof(p->lorawan_frame_hdr.dev_addr) + sizeof(p->lorawan_frame_hdr.fctl->fopts_len), p->lorawan_frame_hdr.fctl->fopts_len);
-    }
-
-    p->payload = pkt + LoRAWAN_FRAME_HEADER_LEN;        //??????????????????????
-    p->payload_len = len - LoRAWAN_FRAME_HEADER_LEN;
+    p->payload = pkt + LORAWAN_FRAME_GET_HEADER_LEN(p) + LORAWAN_FRAME_PORT_LEN;
+    p->payload_len = len - LORAWAN_FRAME_GET_HEADER_LEN(p) - LORAWAN_FRAME_PORT_LEN;
 
     return 0;
 }
 
-void DecodeLORAWANFrame(ThreadVars *tv, DecodeThreadVars *dtv, Packet *p, uint8_t *pkt, uint16_t len, PacketQueue *pq)
+
+void DecodeLorawanFrame(ThreadVars *tv, DecodeThreadVars *dtv, Packet *p, uint8_t *pkt, uint16_t len, PacketQueue *pq)
 {
     int ret;
 
     SCPerfCounterIncr(dtv->counter_lorawan_dataframe, tv->sc_perf_pca);
 
 
-    ret = DecodeLORAWANFramePacket(tv, p, pkt, len);
+    ret = DecodeLorawanFramePacket(tv, p, pkt, len);
     if (ret < 0) {
         SCLogDebug("decoding Lorawan frame packet failed");
         p->lorawanfh = NULL;
         return;
     }
 
-    switch (LORAWAN_GET_FPORT(p)) {
-        case LORAWAN_FPORT_MAC_COMMAND:
-            //
-            DecocdeLorawanMACComands();
+    switch (LORAWAN_FRAME_GET_FPORT(p)) {
+        case 0x00:
+            if (LORAWAN_FRAME_GET_HEADER_LEN(p) == LORAWAN_FRAME_HEADER_LEN_MIN) {
+                DecodeLorawanMacCommand(tv, p, pkt + LORAWAN_FRAME_HEADER_LEN_MIN, LORAWAN_FRAME_GET_FOPTS_LEN(p));
+            } else {
+                DecodeLorawanMacCommand(tv, p, p->payload, p->payload_len);
+            }
             break;
-        case LORAWAN_FPORT_APP_SPCIFIC:
+        case 0x01:
+            //TODO IF Some AppLayer IOT Protocols Based on LoRaWan Decoding From Here
+            break;
+        default:
+            //TODO Decode Raw Payloads
             break;
     }
 
-    //TODO HOW TO PROCESS THE RE-ASSEMBLY
+    //TODO HOW TO PROCESS THE RE-ASSEMBLY or VerdictNFQ ???
     return;
 }
