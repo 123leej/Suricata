@@ -30,10 +30,18 @@ static int DecodeLORAWANFramePacket(ThreadVars *tv, Packet *p, uint8_t *pkt, uin
     }
 
     p->lorafh = (LorawanFrame4Hdr *)pkt;
-
-    if (LORAWAN_FRAME_GET_HLEN(p) < LORAWAN_FRAME_GET_FOPTS_LEN + 7) {
-        DECODER_SET_EVENT(p,LORAWAN_FRAME_HLEN_TOO_SMALL);
+    /*
+    if (LORAWAN_FRAME_GET_FCTL_LEN(p) < LORAWAN_FRAME_FCTL_LEN) {
+        DECODER_SET_EVENT(p,LORAWAN_FRAME_FCTL_TOO_SMALL);
         return -1;
+    }
+
+    if (LORAWAN_FRAME_GET_FOPTS_LEN(p) + LORAWAN_FRAME_HEADER_LEN_MIN < LORAWAN_FRAME_HEADER_LEN)
+    */
+    DecodeLORAWANFrameControls(tv, p, pkt + LORAWAN_FRAME_DEVADDR_LEN, LORAWAN_FRAME_CTRL_LEN);
+
+    if (LORAWAN_FRAME_GET_HEADER_LEN(p) < LORAWAN_FRAME_HEADER_LEN) {
+
     }
 
     if (len != LORAWAN_FRAME_GET_LEN(p)) {
@@ -41,7 +49,6 @@ static int DecodeLORAWANFramePacket(ThreadVars *tv, Packet *p, uint8_t *pkt, uin
         return -1;
     }
 
-    DecodeLORAWANFrameControls(tv, p, pkt + sizeof(p->lorawan_frame_hdr.dev_addr), sizeof(p->lorawan_frame_hdr.fctl));
 
     if (p->lorawanhdr.fctl.fopts_len > 0) {
         DecodeLORAWANFrameOptions(tv, p, pkt + sizeof(p->lorawan_frame_hdr.dev_addr) + sizeof(p->lorawan_frame_hdr.fctl->fopts_len), p->lorawan_frame_hdr.fctl->fopts_len);

@@ -36,9 +36,7 @@ typedef struct LorawanFrameHdr_ {
     uint32_t dev_addr;                                      /* DevAddr */
     struct LorawanFrameCtrl *fctl;                         /* Fctl */
     uint16_t fcnt;                                          /* Fcnt */
-#ifdef LORAWAN_MAC_COMMAND
-    unsigned char* Fopts : 120;                           /* Fopts */
-#endif
+    unsigned char* fopts;                         /* Fopts */
 } LorawanFrameHdr;
 
 typedef struct LorawanFrameVars_ {
