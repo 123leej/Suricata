@@ -5,14 +5,15 @@
 #ifndef SRC_DECODE_LORAWAN_FRAME_H
 #define SRC_DECODE_LORAWAN_FRAME_H
 
-/** FHDR(7~23) [DevAddr(4) | FCtrl(1) [ ADR(1) | ADR_ACK_REQ(1) | ACK(1) | FPENDING(1) | FOPTSLEN(4) ] |  FCnt(2) | FOpts(15)] **/
+/** FHDR(7~22) [DevAddr(4) | FCtrl(1) [ ADR(1) | ADR_ACK_REQ(1) | ACK(1) | FPENDING(1) | FOPTSLEN(4) ] |  FCnt(2) | FOpts(15)] **/
 /** FPORTS(0~1) **/
 /** FRMPayload(0~N) **/
 
 #define LORAWAN_FRAME_HEADER_LEN_MIN            7            /**< Header Minimum length */
-#define LORAWAN_FRAME_HEADER_LEN_MAX            15           /**< Header Maximum length */
-#define LORAWAN_FRAME_PORT_LEN                  1            /**< Frame Ports length */
-
+#define LORAWAN_FRAME_HEADER_LEN_MAX            22          /**< Header Maximum length */
+#define LORAWAN_FRAME_PORT_LEN_MIN              0            /**< Frame Ports length */
+#define LORAWAN_FRAME_PORT_LEN_MAX              1
+#define LORAWAN_FRAME_CONTROL_LEN               1
 #define LORAWAN_FPORT_MAC_COMMAND               0x00
 
 /** Frame Options CID **/
