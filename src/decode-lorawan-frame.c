@@ -39,22 +39,17 @@ static int DecodeLorawanFramePacket(ThreadVars *tv, Packet *p, uint8_t *pkt, uin
         return -1;
     }
 
-    if (LORAWAN_FRAME_HEADER_LEN_MAX < LORAWAN_FRAME_GET_HEADER_LEN(p)) {
-        DECODER_SET_EVENT(p, LORAWAN_FRAME_HEADER_TOO_BIG);
+    if (len < LORAWAN_FRAME_GET_HEADER_LEN(p)) {
+        DECODER_SET_EVENT(p, LORAWAN_PKT_TOO_SMALL);
         return -1;
     }
-
-    p->lorawan_frame_vars.fports = pkt + LORAWAN_FRAME_GET_HEADER_LEN(p);
 
     if (len < LORAWAN_FRAME_GET_HEADER_LEN(p) + LORAWAN_FPORT_LEN) {
         DECODER_SET_EVENT(p, LORAWAN_PKT_TOO_SMALL);
         return -1;
     }
 
-    if (len != LORAWAN_FRAME_GET_LEN(p)) {
-        DECODER_SET_EVENT(p,LORAWAN_FRAME_PKT_INVALID);
-        return -1;
-    }
+    p->lorawan_frame_vars.fports = pkt + LORAWAN_FRAME_GET_HEADER_LEN(p);
 
     p->payload = pkt + LORAWAN_FRAME_GET_HEADER_LEN(p) + LORAWAN_FRAME_PORT_LEN;
     p->payload_len = len - LORAWAN_FRAME_GET_HEADER_LEN(p) - LORAWAN_FRAME_PORT_LEN;
