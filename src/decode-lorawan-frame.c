@@ -37,7 +37,7 @@ static int DecodeLorawanFramePacket(ThreadVars *tv, Packet *p, uint8_t *pkt, uin
 
     p->lorafh = (LorawanFrame4Hdr *)pkt;
 
-    ret = DecodeLorawanFrameControls(tv, p, pkt+LORAWAN_FRAME_DEV_ADDR_LEN, LORAWAN_FRAME_CTRL_LEN);
+    ret = DecodeLorawanFrameControls(tv, p, pkt+LORAWAN_FRAME_DEV_ADDR_LEN, LORAWAN_FRAME_CONTROL_LEN);
 
     if (ret < 0) {
         SCLogDebug("decoding Lorawan frame control failed");
@@ -49,8 +49,8 @@ static int DecodeLorawanFramePacket(ThreadVars *tv, Packet *p, uint8_t *pkt, uin
         DECODER_SET_EVENT(p, LORAWAN_PKT_TOO_SMALL);
         return -1;
     }
-
-    if (len < LORAWAN_FRAME_GET_HEADER_LEN(p) + LORAWAN_FPORT_LEN) {
+    //TODO IF MAC COMMAND FPORT IS 0
+    if (len < LORAWAN_FRAME_GET_HEADER_LEN(p) + LORAWAN_FRAME_PORT_LEN) {
         DECODER_SET_EVENT(p, LORAWAN_PKT_TOO_SMALL);
         return -1;
     }
