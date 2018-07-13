@@ -376,6 +376,7 @@ typedef struct DecodeThreadVars_
 
     /** stats/counters */
     uint16_t counter_lorawan_dataframe;
+    uint16_t counter_lorawan_mac;
     uint16_t counter_pkts;
     uint16_t counter_pkts_per_sec;
     uint16_t counter_bytes;
