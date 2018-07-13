@@ -25,6 +25,9 @@
 #define __DECODE_EVENTS_H__
 
 enum {
+
+    LORAWAN_FRAME_CONTROL_INVALID,
+
     /* IPV4 EVENTS */
     IPV4_PKT_TOO_SMALL = 1,         /**< ipv4 pkt smaller than minimum header size */
     IPV4_HLEN_TOO_SMALL,            /**< ipv4 header smaller than minimum size */

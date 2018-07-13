@@ -11,8 +11,9 @@
 
 #define LORAWAN_FRAME_HEADER_LEN_MIN            7            /**< Header Minimum length */
 #define LORAWAN_FRAME_HEADER_LEN_MAX            22          /**< Header Maximum length */
-#define LORAWAN_FRAME_PORT_LEN                  1            /**< Frame Ports length */
-
+#define LORAWAN_FRAME_PORT_LEN_MIN              0            /**< Frame Ports length */
+#define LORAWAN_FRAME_PORT_LEN_MAX              1
+#define LORAWAN_FRAME_CONTROL_LEN               1
 #define LORAWAN_FPORT_MAC_COMMAND               0x00
 
 /** Frame Options CID **/
