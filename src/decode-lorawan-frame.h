@@ -9,6 +9,8 @@
 /** FPORTS(0~1) **/
 /** FRMPayload(0~N) **/
 
+
+#define LORAWAN_FRAME_DEV_ADDR_LEN              4
 #define LORAWAN_FRAME_HEADER_LEN_MIN            7            /**< Header Minimum length */
 #define LORAWAN_FRAME_HEADER_LEN_MAX            22          /**< Header Maximum length */
 #define LORAWAN_FRAME_PORT_LEN_MIN              0            /**< Frame Ports length */
@@ -33,6 +35,11 @@
 #define RX_TIMING_SETUP_ANS                     0x08         /**< Rx Timing Setup Answer from End-Device*/
 
 
+#define LORAWAN_FRAME_SET_FOPTS_LEN(packet, fpots)              ((packet)->lorawan_fopts_len =      fopts)
+#define LORAWAN_FRAME_SET_HEADER_LEN(packet, header)            ((packet)-> = )
+
+#define LORAWAN_FRAME_GET_FOPTS_LEN(packet)                     ((packet)->lorawan_fopts_len)
+#define LORAWAN_FRAME_GET_HEADER_LEN(packet)                    ((packet)->lorawan_fopts_len + LORAWAN_FRAME_HEADER_MIN)
 typedef struct LorawanFrameHdr_ {
     uint32_t dev_addr;                                      /* DevAddr */
     struct LorawanFrameCtrl *fctl;                         /* Fctl */
