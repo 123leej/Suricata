@@ -45,51 +45,7 @@
 #include "util-privs.h"
 #include "tmqh-packetpool.h"
 
-#ifndef NFQ
-/** Handle the case where no NFQ support is compiled in.
- *
- */
 
-TmEcode NoNFQSupportExit(ThreadVars *, void *, void **);
-
-void TmModuleReceiveNFQRegister (void) {
-    tmm_modules[TMM_RECEIVENFQ].name = "ReceiveNFQ";
-    tmm_modules[TMM_RECEIVENFQ].ThreadInit = NoNFQSupportExit;
-    tmm_modules[TMM_RECEIVENFQ].Func = NULL;
-    tmm_modules[TMM_RECEIVENFQ].ThreadExitPrintStats = NULL;
-    tmm_modules[TMM_RECEIVENFQ].ThreadDeinit = NULL;
-    tmm_modules[TMM_RECEIVENFQ].RegisterTests = NULL;
-    tmm_modules[TMM_RECEIVENFQ].cap_flags = SC_CAP_NET_ADMIN;
-}
-
-void TmModuleVerdictNFQRegister (void) {
-    tmm_modules[TMM_VERDICTNFQ].name = "VerdictNFQ";
-    tmm_modules[TMM_VERDICTNFQ].ThreadInit = NoNFQSupportExit;
-    tmm_modules[TMM_VERDICTNFQ].Func = NULL;
-    tmm_modules[TMM_VERDICTNFQ].ThreadExitPrintStats = NULL;
-    tmm_modules[TMM_VERDICTNFQ].ThreadDeinit = NULL;
-    tmm_modules[TMM_VERDICTNFQ].RegisterTests = NULL;
-    tmm_modules[TMM_VERDICTNFQ].cap_flags = SC_CAP_NET_ADMIN;
-}
-
-void TmModuleDecodeNFQRegister (void) {
-    tmm_modules[TMM_DECODENFQ].name = "DecodeNFQ";
-    tmm_modules[TMM_DECODENFQ].ThreadInit = NoNFQSupportExit;
-    tmm_modules[TMM_DECODENFQ].Func = NULL;
-    tmm_modules[TMM_DECODENFQ].ThreadExitPrintStats = NULL;
-    tmm_modules[TMM_DECODENFQ].ThreadDeinit = NULL;
-    tmm_modules[TMM_DECODENFQ].RegisterTests = NULL;
-    tmm_modules[TMM_DECODENFQ].cap_flags = 0;
-}
-
-TmEcode NoNFQSupportExit(ThreadVars *tv, void *initdata, void **data)
-{
-    SCLogError(SC_ERR_NFQ_NOSUPPORT,"Error creating thread %s: you do not have support for nfqueue "
-           "enabled please recompile with --enable-nfqueue", tv->name);
-    exit(EXIT_FAILURE);
-}
-
-#else /* implied we do have NFQ support */
 #include <pthread.h>
 
 extern int max_pending_packets;

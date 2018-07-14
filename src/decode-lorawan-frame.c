@@ -15,6 +15,7 @@ static int DecodeLorawanFrameControls(ThreadVars *tv, Packet *p, uint8_t *pkt, u
 {
     if (len != LORAWAN_FRAME_CONTROL_LEN) {
         DECODER_SET_EVENT(p, LORAWAN_FRAME_CONTROL_INVALID);
+        return -1;
     }
 
     p->lorafh->fctl = (LorawanFrameCtrl *)pkt;
@@ -35,7 +36,7 @@ static int DecodeLorawanFramePacket(ThreadVars *tv, Packet *p, uint8_t *pkt, uin
         return -1;
     }
 
-    p->lorafh = (LorawanFrame4Hdr *)pkt;
+    p->lorafh = (LorawanFrameHdr *)pkt;
 
     ret = DecodeLorawanFrameControls(tv, p, pkt+LORAWAN_FRAME_DEV_ADDR_LEN, LORAWAN_FRAME_CONTROL_LEN);
 
