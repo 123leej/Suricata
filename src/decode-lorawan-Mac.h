@@ -21,10 +21,11 @@
 #define MTYPE_RFU								0x06		/**< Mtype Reserved for future use  */		
 #define PROPRIETARY								0x07		/**< Proprietary message from End-Device?  */
 
+
+#define LORAWAN_MAC_TRIM_MIC(packet,payload)		(((packet)->lorawan_mac_header.macpayload) = (payload>>4))
+
 typedef struct LorawanMacHdr_ {
 	unsigned int mtype : 3;
 	unsigned int rfu : 3;
 	unsigned int major : 2;
 } LorawanMacHdr;
-
-
