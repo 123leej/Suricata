@@ -25,7 +25,11 @@
 #define __DECODE_EVENTS_H__
 
 enum {
-
+    /* LORAWAN EVENTS */
+    LORAWAN_PKT_TOO_SMALL,
+    LORAWAN_FRAME_HEADER_TOO_BIG,
+    LORAWAN_FRAME_PKT_INVALID,
+    LORAWAN_FRAME_PKT_INVALID,
     LORAWAN_FRAME_CONTROL_INVALID,
 
     /* IPV4 EVENTS */
@@ -44,7 +48,6 @@ enum {
     IPV4_OPT_UNKNOWN,               /**< unknown ip option */
     IPV4_WRONG_IP_VER,              /**< wrong ip version in ip options */
 
-
     /* IPV6 EVENTS */
     IPV6_PKT_TOO_SMALL,             /**< ipv6 packet smaller than minimum size */
     IPV6_TRUNC_PKT,                 /**< truncated ipv6 packet */
@@ -59,28 +62,19 @@ enum {
     IPV6_EXTHDR_INVALID_OPTLEN,     /**< the opt len in an hop or dst hdr is invalid. */
     IPV6_WRONG_IP_VER,              /**< wrong version in ipv6 */
 
-    /* TCP EVENTS */
-    TCP_PKT_TOO_SMALL,              /**< tcp packet smaller than minimum size */
-    TCP_HLEN_TOO_SMALL,             /**< tcp header smaller than minimum size */
-    TCP_INVALID_OPTLEN,             /**< invalid len in tcp options */
-
-    /* TCP OPTIONS */
-    TCP_OPT_INVALID_LEN,            /**< tcp option with invalid len */
-    TCP_OPT_DUPLICATE,              /**< duplicated tcp option */
 
     /* UDP EVENTS */
     UDP_PKT_TOO_SMALL,              /**< udp packet smaller than minimum size */
     UDP_HLEN_TOO_SMALL,             /**< udp header smaller than minimum size */
     UDP_HLEN_INVALID,               /**< invalid len of upd header */
 
-    /* SLL EVENTS */
-    SLL_PKT_TOO_SMALL,              /**< sll packet smaller than minimum size */
 
     /* ETHERNET EVENTS */
     ETHERNET_PKT_TOO_SMALL,         /**< ethernet packet smaller than minimum size */
 
      /* RAW EVENTS */
     IPRAW_INVALID_IPV,              /**< invalid ip version in ip raw */
+
 
     /* should always be last! */
     DECODE_EVENT_MAX,
