@@ -24,14 +24,7 @@
 #ifndef __DECODE_H__
 #define __DECODE_H__
 
-//#define IPQ
-//#define NFQ
-//#define IPFW
-//#define PCAP
-
-//#define DEBUG
-#define DBG_PERF
-//#define DBG_THREADS
+#define NFQ
 #define COUNTERS
 
 #include "threadvars.h"
@@ -48,126 +41,59 @@
 #include "decode-udp.h"
 
 #include "detect-reference.h"
+#include "decode-lorawan-frame.h"
+#include "decode-lorawan-Mac.h"
 
 
 /* forward declaration */
 struct DetectionEngineThreadCtx_;
 
 
-/* Address */
-typedef struct Address_ {
-    char family;
-    union {
-        uint32_t       address_un_data32[4]; /* type-specific field */
-        uint16_t       address_un_data16[8]; /* type-specific field */
-        uint8_t        address_un_data8[16]; /* type-specific field */
-    } address;
-} Address;
+/* EUI */
+typedef struct EUI_ {
+    uint64_t deveui;
+    uint64_t appeui;
+    u_int8_t direction;
+} EUI;
 
-#define addr_data32 address.address_un_data32
-#define addr_data16 address.address_un_data16
-#define addr_data8  address.address_un_data8
+#define SET_LORAWAN_UPLINK_EUI (pkt, eui) do {                    \
+        (eui)->deveui = (pkt)->deveui;                            \
+        (eui)->appeui = (pkt)->appeui;                            \
+        (eui)->direction = (pkt)->direction;                      \
+    } while(0)
 
-#define COPY_ADDRESS(a, b) do {                    \
-        (b)->family = (a)->family;                 \
-        (b)->addr_data32[0] = (a)->addr_data32[0]; \
-        (b)->addr_data32[1] = (a)->addr_data32[1]; \
-        (b)->addr_data32[2] = (a)->addr_data32[2]; \
-        (b)->addr_data32[3] = (a)->addr_data32[3]; \
-    } while (0)
 
-/* Set the IPv4 addressesinto the Addrs of the Packet.
- * Make sure p->ip4h is initialized and validated.
- *
- * We set the rest of the struct to 0 so we can
- * prevent using memset. */
-#define SET_IPV4_SRC_ADDR(p, a) do {                              \
-        (a)->family = AF_INET;                                    \
-        (a)->addr_data32[0] = (uint32_t)(p)->ip4h->ip_src.s_addr; \
-        (a)->addr_data32[1] = 0;                                  \
-        (a)->addr_data32[2] = 0;                                  \
-        (a)->addr_data32[3] = 0;                                  \
-    } while (0)
+#define SET_LORAWAN_DOWNLINK_EUI (pkt, eui) do {                  \
+        (eui)->deveui = (pkt)->deveui;                            \
+        (eui)->appeui = (pkt)->appeui;                            \
+        (eui)->direction = (pkt)->direction;                      \
+    } while(0)
 
-#define SET_IPV4_DST_ADDR(p, a) do {                              \
-        (a)->family = AF_INET;                                    \
-        (a)->addr_data32[0] = (uint32_t)(p)->ip4h->ip_dst.s_addr; \
-        (a)->addr_data32[1] = 0;                                  \
-        (a)->addr_data32[2] = 0;                                  \
-        (a)->addr_data32[3] = 0;                                  \
-    } while (0)
 
-/* clear the address structure by setting all fields to 0 */
-#define CLEAR_ADDR(a) do {       \
-        (a)->family = 0;         \
-        (a)->addr_data32[0] = 0; \
-        (a)->addr_data32[1] = 0; \
-        (a)->addr_data32[2] = 0; \
-        (a)->addr_data32[3] = 0; \
-    } while (0)
+#define CLEAR_EUI (pkt, eui) do {                                 \
+        (eui)->deveui = 0;                                        \
+        (eui)->appeui = 0;                                        \
+        (eui)->direction = 0;                                     \
+    } while(0)
 
-/* Set the IPv6 addressesinto the Addrs of the Packet.
- * Make sure p->ip6h is initialized and validated. */
-#define SET_IPV6_SRC_ADDR(p, a) do {                 \
-        (a)->family = AF_INET6;                      \
-        (a)->addr_data32[0] = (p)->ip6h->ip6_src[0]; \
-        (a)->addr_data32[1] = (p)->ip6h->ip6_src[1]; \
-        (a)->addr_data32[2] = (p)->ip6h->ip6_src[2]; \
-        (a)->addr_data32[3] = (p)->ip6h->ip6_src[3]; \
-    } while (0)
 
-#define SET_IPV6_DST_ADDR(p, a) do {                 \
-        (a)->family = AF_INET6;                      \
-        (a)->addr_data32[0] = (p)->ip6h->ip6_dst[0]; \
-        (a)->addr_data32[1] = (p)->ip6h->ip6_dst[1]; \
-        (a)->addr_data32[2] = (p)->ip6h->ip6_dst[2]; \
-        (a)->addr_data32[3] = (p)->ip6h->ip6_dst[3]; \
-    } while (0)
+#define COPY_EUI (a, b) do {                                      \
+        (a)->deveui = (b)->deveui;                                \
+        (a)->appeui = (b)->appeui;                                \
+        (a)->direction = (b)->direction;                          \
+    } while(0)
 
-/* Set the TCP ports into the Ports of the Packet.
- * Make sure p->tcph is initialized and validated. */
-#define SET_TCP_SRC_PORT(pkt, prt) do {          \
-        SET_PORT(TCP_GET_SRC_PORT((pkt)), *prt); \
-    } while (0)
 
-#define SET_TCP_DST_PORT(pkt, prt) do {          \
-        SET_PORT(TCP_GET_DST_PORT((pkt)), *prt); \
-    } while (0)
+#define GET_LORAWAN_DEVEUI(pkt) ((pkt)->deveui)
+#define GET_LORAWAN_APPEUI(pkt) ((pkt)->appeui)
+#define GET_LORAWAN_DIRECTION(pkt) ((pkt)->direction)
 
-/* Set the UDP ports into the Ports of the Packet.
- * Make sure p->udph is initialized and validated. */
-#define SET_UDP_SRC_PORT(pkt, prt) do {          \
-        SET_PORT(UDP_GET_SRC_PORT((pkt)), *prt); \
-    } while (0)
-#define SET_UDP_DST_PORT(pkt, prt) do {          \
-        SET_PORT(UDP_GET_DST_PORT((pkt)), *prt); \
-    } while (0)
 
-#define GET_IPV4_SRC_ADDR_U32(p) ((p)->src.addr_data32[0])
-#define GET_IPV4_DST_ADDR_U32(p) ((p)->dst.addr_data32[0])
-#define GET_IPV4_SRC_ADDR_PTR(p) ((p)->src.addr_data32)
-#define GET_IPV4_DST_ADDR_PTR(p) ((p)->dst.addr_data32)
+#define CMP_EUI(e1, e2)                                           \
+    (((e1)->deveui == (e2)->deveui &&                             \
+      (e1)->appeui == (e2)->appeui &&                             \
+      (e1)->direction == (e2)->direction ))
 
-#define GET_IPV6_SRC_ADDR(p) ((p)->src.addr_data32)
-#define GET_IPV6_DST_ADDR(p) ((p)->dst.addr_data32)
-#define GET_TCP_SRC_PORT(p)  ((p)->sp)
-#define GET_TCP_DST_PORT(p)  ((p)->dp)
-
-/* Port is just a uint16_t */
-typedef uint16_t Port;
-#define SET_PORT(v, p) ((p) = (v))
-#define COPY_PORT(a,b) (b) = (a)
-
-#define CMP_ADDR(a1, a2) \
-    (((a1)->addr_data32[3] == (a2)->addr_data32[3] && \
-      (a1)->addr_data32[2] == (a2)->addr_data32[2] && \
-      (a1)->addr_data32[1] == (a2)->addr_data32[1] && \
-      (a1)->addr_data32[0] == (a2)->addr_data32[0]))
-#define CMP_PORT(p1, p2) \
-    ((p1 == p2))
-
-/*Given a packet pkt offset to the start of the ip header in a packet
- *We determine the ip version. */
 
 #define PKT_IS_IPV4(p)      (((p)->ip4h != NULL))
 #define PKT_IS_IPV6(p)      (((p)->ip6h != NULL))
@@ -241,20 +167,15 @@ typedef struct Packet_
     /* Addresses, Ports and protocol
      * these are on top so we can use
      * the Packet as a hash key */
-    Address src;
-    Address dst;
     union {
-        Port sp;
-        uint8_t type;
+        uint64_t index_no;
+        u_int8_t of_flag;
     };
+
     union {
-        Port dp;
-        uint8_t code;
+        EUI eui;
     };
     uint8_t proto;
-    /* make sure we can't be attacked on when the tunneled packet
-     * has the exact same tuple as the lower levels */
-    uint8_t recursion_level;
 
     /* Pkt Flags */
     uint8_t flags;
@@ -264,18 +185,7 @@ typedef struct Packet_
 
     struct timeval ts;
 
-    union {
-        /* nfq stuff */
-#ifdef NFQ
-        NFQPacketVars nfq_v;
-#endif /* NFQ */
-
-        /** libpcap vars: shared by Pcap Live mode and Pcap File mode */
-        PcapPacketVars pcap_v;
-    };
-
-    /** data linktype in host order */
-    int datalink;
+    NFQPacketVars nfq_v;
 
     /* IPS action to take */
     uint8_t action;
@@ -283,52 +193,24 @@ typedef struct Packet_
     /* pkt vars */
     PktVar *pktvar;
 
-    /* header pointers */
-    EthernetHdr *ethh;
+    LorawanMacHdr *lorawanMacHdr;
 
-    IPV4Hdr *ip4h;
-    IPV4Vars ip4vars;
-    IPV4Cache ip4c;
+    LorawanFrameHdr *lorawanFrameHdr;
+    LorawanFrameVars *lorawanfvars;
+    LorawanFrameCtrl *lorawanfctl;
 
-    IPV6Hdr *ip6h;
-    IPV6Vars ip6vars;
-    IPV6Cache ip6c;
-    IPV6ExtHdrs ip6eh;
+    uint8_t *lorawanfport;
 
-    TCPHdr *tcph;
-    TCPVars tcpvars;
-    TCPCache tcpc;
-
-    UDPHdr *udph;
-    UDPVars udpvars;
-    UDPCache udpc;
-
-    VLANHdr *vlanh;
-
-    /* ptr to the payload of the packet
-     * with it's length. */
     uint8_t *payload;
     uint16_t payload_len;
 
-    /* storage: maximum ip packet size + link header */
-    uint8_t pkt[IPV6_HEADER_LEN + 65536 + 28];
     uint32_t pktlen;
 
     PacketAlerts alerts;
 
-    /** packet number in the pcap file, matches wireshark */
-    uint64_t pcap_cnt;
-
     /* ready to set verdict counter, only set in root */
     uint8_t rtv_cnt;
-    /* tunnel packet ref count */
-    uint8_t tpr_cnt;
     SCMutex mutex_rtv_cnt;
-    /* tunnel stuff */
-    uint8_t tunnel_proto;
-    /* tunnel XXX convert to bitfield*/
-    char tunnel_pkt;
-    char tunnel_verdicted;
 
     /* decoder events */
     PacketDecoderEvents events;
@@ -356,17 +238,17 @@ typedef struct PacketQueue_ {
 #endif /* DBG_PERF */
 } PacketQueue;
 
-/** \brief Specific ctx for AL proto detection */
-typedef struct AlpProtoDetectDirectionThread_ {
-    MpmThreadCtx mpm_ctx;
-    PatternMatcherQueue pmq;
-} AlpProtoDetectDirectionThread;
-
-/** \brief Specific ctx for AL proto detection */
-typedef struct AlpProtoDetectThreadCtx_ {
-    AlpProtoDetectDirectionThread toserver;
-    AlpProtoDetectDirectionThread toclient;
-} AlpProtoDetectThreadCtx;
+///** \brief Specific ctx for AL proto detection */
+//typedef struct AlpProtoDetectDirectionThread_ {
+//    MpmThreadCtx mpm_ctx;
+//    PatternMatcherQueue pmq;
+//} AlpProtoDetectDirectionThread;
+//
+///** \brief Specific ctx for AL proto detection */
+//typedef struct AlpProtoDetectThreadCtx_ {
+//    AlpProtoDetectDirectionThread toserver;
+//    AlpProtoDetectDirectionThread toclient;
+//} AlpProtoDetectThreadCtx;
 
 /** \brief Structure to hold thread specific data for all decode modules */
 typedef struct DecodeThreadVars_
