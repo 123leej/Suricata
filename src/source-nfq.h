@@ -65,10 +65,6 @@ typedef struct NFQThreadVars_
     /* this one should be not changing after init */
     uint16_t queue_num;
 
-#ifdef DBG_PERF
-    int dbg_maxreadsize;
-#endif /* DBG_PERF */
-
     /* counters */
     uint32_t pkts;
     uint64_t bytes;

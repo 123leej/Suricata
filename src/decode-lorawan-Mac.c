@@ -17,14 +17,14 @@ static int DecodeLorawanMACPacket(ThreadVars *tv, Packet *p, uint8_t *pkt, uint1
 		return -1;
 	}
 
-	p->lorawan_mac_header = (LorawanMacHdr *)pkt;
+	p->lorawanmh = (LorawanMacHdr *)pkt;
 
-	p->lorawan_mac_vars.macpayload = pkt + LORAWAN_MAC_HEADER_LEN;
+	p->lorawanmvars->macpayload = pkt + LORAWAN_MAC_HEADER_LEN;
 
 	return 0;
 }
 
-static int DecodeLorawanMAC(ThreadVars *tv, DecodeThreadVars *dtv, Packet *p, uint8_t *pkt, uint16_t len, PacketQueue *pq)
+void int DecodeLorawanMAC(ThreadVars *tv, DecodeThreadVars *dtv, Packet *p, uint8_t *pkt, uint16_t len, PacketQueue *pq)
 {
 	int ret;
 
@@ -39,12 +39,12 @@ static int DecodeLorawanMAC(ThreadVars *tv, DecodeThreadVars *dtv, Packet *p, ui
 
 	if(len < LORAWAN_MAC_HEADER_LEN + LORAWAN_MAC_PAYLOAD_LEN_MIN) {
 		DECODER_SET_EVENT(p,LORAWAN_PKT_TOO_SMALL);
-		return -1;
+		return;
 	}
 
-	LORAWAN_MAC_TRIM_MIC(p,p->lorawan_mac_vars.payload);
+	LORAWAN_MAC_TRIM_MIC(p,p->lorawanmvars->payload);
 
-    switch (p->lorawan_mac_header.mtype) {
+    switch (p->lorawanmh->mtype) {
 
     	//TODO check for uplink and downlink about detailed MAC command
     	case 0x02:	//unconfirmed data up
@@ -52,7 +52,7 @@ static int DecodeLorawanMAC(ThreadVars *tv, DecodeThreadVars *dtv, Packet *p, ui
     	case 0x04:	//unconfirmed data down
     		break;
     	case 0x05:	//confirmed data up
-    		break;
+    		DecodeLorawanFrame(tv, dtv, p, pkt, len, pq);
     	case 0x06:	//confirmed data down
     		break;
     	default:	//join-request, join-accept, RFU, proprietary

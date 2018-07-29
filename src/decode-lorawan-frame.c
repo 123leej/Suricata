@@ -10,15 +10,14 @@
 #include "decode-lorawan-frame.h"
 
 
-
 static int DecodeLorawanFrameControls(ThreadVars *tv, Packet *p, uint8_t *pkt, uint16_t len)
 {
-    if (len != LORAWAN_FRAME_CONTROL_LEN) {
+    if (len != LORAWAN_FRAME_CTRL_LEN) {
         DECODER_SET_EVENT(p, LORAWAN_FRAME_CONTROL_INVALID);
         return -1;
     }
 
-    p->lorafh->fctl = (LorawanFrameCtrl *)pkt;
+    p->lorawanfh->fctl = (LorawanFrameCtrl *)pkt;
 
     LORAWAN_FRAME_SET_FOPTS_LEN(p, p->lorafh->fctl.fopts_len);
     LORAWAN_FRAME_SET_HEADER_LEN(p, LORAWAN_FRAME_HEADER_LEN_MIN + LORAWAN_FRAME_GET_OPTS(p));
@@ -36,9 +35,9 @@ static int DecodeLorawanFramePacket(ThreadVars *tv, Packet *p, uint8_t *pkt, uin
         return -1;
     }
 
-    p->lorafh = (LorawanFrameHdr *)pkt;
+    p->lorawanfh = (LorawanFrameHdr *)pkt;
 
-    ret = DecodeLorawanFrameControls(tv, p, pkt+LORAWAN_FRAME_DEV_ADDR_LEN, LORAWAN_FRAME_CONTROL_LEN);
+    ret = DecodeLorawanFrameControls(tv, p, pkt+LORAWAN_FRAME_DEV_ADDR_LEN, LORAWAN_FRAME_CTRL_LEN);
 
     if (ret < 0) {
         SCLogDebug("decoding Lorawan frame control failed");
@@ -56,7 +55,7 @@ static int DecodeLorawanFramePacket(ThreadVars *tv, Packet *p, uint8_t *pkt, uin
         return -1;
     }
 
-    p->lorawan_frame_vars.fports = pkt + LORAWAN_FRAME_GET_HEADER_LEN(p);
+    p->lorawanfvars->fports = pkt + LORAWAN_FRAME_GET_HEADER_LEN(p);
 
     p->payload = pkt + LORAWAN_FRAME_GET_HEADER_LEN(p) + LORAWAN_FRAME_PORT_LEN;
     p->payload_len = len - LORAWAN_FRAME_GET_HEADER_LEN(p) - LORAWAN_FRAME_PORT_LEN;

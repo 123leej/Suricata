@@ -30,6 +30,7 @@
 #include "suricata-common.h"
 #include "suricata.h"
 #include "decode.h"
+#include "decode.h"
 #include "packet-queue.h"
 #include "threads.h"
 #include "threadvars.h"
@@ -491,8 +492,7 @@ TmEcode VerdictNFQ(ThreadVars *tv, Packet *p, void *data, PacketQueue *pq, Packe
 TmEcode DecodeNFQ(ThreadVars *tv, Packet *p, void *data, PacketQueue *pq, PacketQueue *postpq)
 {
 
-    IPV4Hdr *ip4h = (IPV4Hdr *)p->pkt;
-    IPV6Hdr *ip6h = (IPV6Hdr *)p->pkt;
+    EUI *eui = (EUI *)p->pkt;
     DecodeThreadVars *dtv = (DecodeThreadVars *)data;
 
     SCPerfCounterIncr(dtv->counter_pkts, tv->sc_perf_pca);
@@ -503,13 +503,10 @@ TmEcode DecodeNFQ(ThreadVars *tv, Packet *p, void *data, PacketQueue *pq, Packet
     SCPerfCounterAddDouble(dtv->counter_mbit_per_sec, tv->sc_perf_pca,
                            (p->pktlen * 8)/1000000.0);
 
-    if (IPV4_GET_RAW_VER(ip4h) == 4) {
-        SCLogDebug("IPv4 packet");
+    if (PKT_IS_LORAWAN(p)) {
+        SCLogDebug("Lorawan packet");
 
-        DecodeIPV4(tv, dtv, p, p->pkt, p->pktlen, pq);
-    } else if(IPV6_GET_RAW_VER(ip6h) == 6) {
-        SCLogDebug("IPv6 packet");
-        DecodeIPV6(tv, dtv, p, p->pkt, p->pktlen, pq);
+        DecodeLorawanMAC(tv, dtv, p, p->pkt, p->pktlen, pq);
     } else {
         SCLogDebug("packet unsupported by NFQ, first byte: %02x", *p->pkt);
     }
