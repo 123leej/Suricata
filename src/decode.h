@@ -33,16 +33,10 @@
 
 #include "action-globals.h"
 
-#include "decode-ethernet.h"
-#include "decode-sll.h"
-#include "decode-ipv4.h"
-#include "decode-ipv6.h"
-#include "decode-tcp.h"
-#include "decode-udp.h"
-
-#include "detect-reference.h"
 #include "decode-lorawan-frame.h"
 #include "decode-lorawan-Mac.h"
+
+#include "detect-reference.h"
 
 
 /* forward declaration */
@@ -53,46 +47,34 @@ struct DetectionEngineThreadCtx_;
 typedef struct EUI_ {
     uint64_t deveui;
     uint64_t appeui;
-    u_int8_t direction;
 } EUI;
 
-#define SET_LORAWAN_UPLINK_EUI (pkt, eui) do {                    \
+
+#define SET_LORAWAN_EUI (pkt, eui) do {                  \
         (eui)->deveui = (pkt)->deveui;                            \
         (eui)->appeui = (pkt)->appeui;                            \
-        (eui)->direction = (pkt)->direction;                      \
-    } while(0)
-
-
-#define SET_LORAWAN_DOWNLINK_EUI (pkt, eui) do {                  \
-        (eui)->deveui = (pkt)->deveui;                            \
-        (eui)->appeui = (pkt)->appeui;                            \
-        (eui)->direction = (pkt)->direction;                      \
     } while(0)
 
 
 #define CLEAR_EUI (pkt, eui) do {                                 \
         (eui)->deveui = 0;                                        \
         (eui)->appeui = 0;                                        \
-        (eui)->direction = 0;                                     \
     } while(0)
 
 
 #define COPY_EUI (a, b) do {                                      \
         (a)->deveui = (b)->deveui;                                \
         (a)->appeui = (b)->appeui;                                \
-        (a)->direction = (b)->direction;                          \
     } while(0)
 
 
 #define GET_LORAWAN_DEVEUI(pkt) ((pkt)->deveui)
 #define GET_LORAWAN_APPEUI(pkt) ((pkt)->appeui)
-#define GET_LORAWAN_DIRECTION(pkt) ((pkt)->direction)
 
 
 #define CMP_EUI(e1, e2)                                           \
     (((e1)->deveui == (e2)->deveui &&                             \
-      (e1)->appeui == (e2)->appeui &&                             \
-      (e1)->direction == (e2)->direction ))
+      (e1)->appeui == (e2)->appeui ))
 
 
 #define PKT_IS_IPV4(p)      (((p)->ip4h != NULL))
@@ -174,6 +156,7 @@ typedef struct Packet_
 
     union {
         EUI eui;
+        uint8_t direction;
     };
     uint8_t proto;
 
@@ -193,17 +176,18 @@ typedef struct Packet_
     /* pkt vars */
     PktVar *pktvar;
 
-    LorawanMacHdr *lorawanMacHdr;
+    LorawanMacHdr *lorawanmh;
+    LorawanMacVars * lorawanmvars;
 
-    LorawanFrameHdr *lorawanFrameHdr;
+    LorawanFrameHdr *lorawanfh;
     LorawanFrameVars *lorawanfvars;
     LorawanFrameCtrl *lorawanfctl;
-
-    uint8_t *lorawanfport;
 
     uint8_t *payload;
     uint16_t payload_len;
 
+    /* storage: maximum ip packet size + link header */
+    uint8_t pkt[IPV6_HEADER_LEN + 65536 + 28];
     uint32_t pktlen;
 
     PacketAlerts alerts;
@@ -421,8 +405,6 @@ void DecodeIPV4(ThreadVars *, DecodeThreadVars *, Packet *, uint8_t *, uint16_t,
 void DecodeIPV6(ThreadVars *, DecodeThreadVars *, Packet *, uint8_t *, uint16_t, PacketQueue *);
 void DecodeTCP(ThreadVars *, DecodeThreadVars *, Packet *, uint8_t *, uint16_t, PacketQueue *);
 void DecodeUDP(ThreadVars *, DecodeThreadVars *, Packet *, uint8_t *, uint16_t, PacketQueue *);
-
-void AddressDebugPrint(Address *);
 
 /** \brief Set the No payload inspection Flag for the packet.
  *
