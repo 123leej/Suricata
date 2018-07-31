@@ -1,0 +1,85 @@
+The system is: Windows - 10.0.17134 - AMD64
+Compiling the C compiler identification source file "CMakeCCompilerId.c" succeeded.
+Compiler: C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.14.26428/bin/Hostx64/x64/cl.exe 
+Build flags: 
+Id flags:  
+
+The output was:
+0
+Microsoft (R) C/C++ 최적화 컴파일러 버전 19.14.26433(x64)
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+CMakeCCompilerId.c
+Microsoft (R) Incremental Linker Version 14.14.26433.0
+Copyright (C) Microsoft Corporation.  All rights reserved.
+
+/out:CMakeCCompilerId.exe 
+CMakeCCompilerId.obj 
+
+
+Compilation of the C compiler identification source "CMakeCCompilerId.c" produced "CMakeCCompilerId.exe"
+
+Compilation of the C compiler identification source "CMakeCCompilerId.c" produced "CMakeCCompilerId.obj"
+
+The C compiler identification is MSVC, found in "C:/Users/SECUCEN/Documents/LJW/Dev/Suricata/Build/x64/Release/CMakeFiles/3.12.0/CompilerIdC/CMakeCCompilerId.exe"
+
+Compiling the CXX compiler identification source file "CMakeCXXCompilerId.cpp" succeeded.
+Compiler: C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.14.26428/bin/Hostx64/x64/cl.exe 
+Build flags: ${CMAKE_CXX_FLAGS};-m64
+Id flags: -c 
+
+The output was:
+0
+Microsoft (R) C/C++ 최적화 컴파일러 버전 19.14.26433(x64)
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+cl : 명령줄 warning D9002 : 알 수 없는 '-m64' 옵션을 무시합니다.
+cl : 명령줄 warning D9024 : 인식할 수 없는 소스 파일 형식 '${CMAKE_CXX_FLAGS}'입니다. 개체 파일이 선택됩니다.
+cl : 명령줄 warning D9027 : '${CMAKE_CXX_FLAGS}' 소스 파일을 무시합니다.
+CMakeCXXCompilerId.cpp
+
+
+Compilation of the CXX compiler identification source "CMakeCXXCompilerId.cpp" produced "CMakeCXXCompilerId.obj"
+
+The CXX compiler identification is MSVC, found in "C:/Users/SECUCEN/Documents/LJW/Dev/Suricata/Build/x64/Release/CMakeFiles/3.12.0/CompilerIdCXX/CMakeCXXCompilerId.obj"
+
+Determining if the C compiler works passed with the following output:
+Change Dir: C:/Users/SECUCEN/Documents/LJW/Dev/Suricata/Build/x64/Release/CMakeFiles/CMakeTmp
+
+Run Build Command:"nmake" "/nologo" "cmTC_dca00\fast"
+	"C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.14.26428\bin\HostX64\x64\nmake.exe" -f CMakeFiles\cmTC_dca00.dir\build.make /nologo -L                  CMakeFiles\cmTC_dca00.dir\build
+Building C object CMakeFiles/cmTC_dca00.dir/testCCompiler.c.obj
+	C:\PROGRA~2\MICROS~2\2017\COMMUN~1\VC\Tools\MSVC\1414~1.264\bin\Hostx64\x64\cl.exe @C:\Users\SECUCEN\AppData\Local\Temp\nmF37C.tmp
+testCCompiler.c
+Linking C executable cmTC_dca00.exe
+	"C:\Program Files\JetBrains\CLion 2018.1.6\bin\cmake\win\bin\cmake.exe" -E vs_link_exe --intdir=CMakeFiles\cmTC_dca00.dir --manifests  -- C:\PROGRA~2\MICROS~2\2017\COMMUN~1\VC\Tools\MSVC\1414~1.264\bin\Hostx64\x64\link.exe /nologo @CMakeFiles\cmTC_dca00.dir\objects1.rsp @C:\Users\SECUCEN\AppData\Local\Temp\nmF3FA.tmp
+
+
+Detecting C compiler ABI info compiled with the following output:
+Change Dir: C:/Users/SECUCEN/Documents/LJW/Dev/Suricata/Build/x64/Release/CMakeFiles/CMakeTmp
+
+Run Build Command:"nmake" "/nologo" "cmTC_a9173\fast"
+	"C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.14.26428\bin\HostX64\x64\nmake.exe" -f CMakeFiles\cmTC_a9173.dir\build.make /nologo -L                  CMakeFiles\cmTC_a9173.dir\build
+Building C object CMakeFiles/cmTC_a9173.dir/CMakeCCompilerABI.c.obj
+	C:\PROGRA~2\MICROS~2\2017\COMMUN~1\VC\Tools\MSVC\1414~1.264\bin\Hostx64\x64\cl.exe @C:\Users\SECUCEN\AppData\Local\Temp\nmF87F.tmp
+CMakeCCompilerABI.c
+Linking C executable cmTC_a9173.exe
+	"C:\Program Files\JetBrains\CLion 2018.1.6\bin\cmake\win\bin\cmake.exe" -E vs_link_exe --intdir=CMakeFiles\cmTC_a9173.dir --manifests  -- C:\PROGRA~2\MICROS~2\2017\COMMUN~1\VC\Tools\MSVC\1414~1.264\bin\Hostx64\x64\link.exe /nologo @CMakeFiles\cmTC_a9173.dir\objects1.rsp @C:\Users\SECUCEN\AppData\Local\Temp\nmF8ED.tmp
+
+
+
+
+Detecting C [] compiler features compiled with the following output:
+Change Dir: C:/Users/SECUCEN/Documents/LJW/Dev/Suricata/Build/x64/Release/CMakeFiles/CMakeTmp
+
+Run Build Command:"nmake" "/nologo" "cmTC_87240\fast"
+	"C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.14.26428\bin\HostX64\x64\nmake.exe" -f CMakeFiles\cmTC_87240.dir\build.make /nologo -L                  CMakeFiles\cmTC_87240.dir\build
+Building C object CMakeFiles/cmTC_87240.dir/feature_tests.c.obj
+	C:\PROGRA~2\MICROS~2\2017\COMMUN~1\VC\Tools\MSVC\1414~1.264\bin\Hostx64\x64\cl.exe @C:\Users\SECUCEN\AppData\Local\Temp\nmFE5A.tmp
+feature_tests.c
+Linking C executable cmTC_87240.exe
+	"C:\Program Files\JetBrains\CLion 2018.1.6\bin\cmake\win\bin\cmake.exe" -E vs_link_exe --intdir=CMakeFiles\cmTC_87240.dir --manifests  -- C:\PROGRA~2\MICROS~2\2017\COMMUN~1\VC\Tools\MSVC\1414~1.264\bin\Hostx64\x64\link.exe /nologo @CMakeFiles\cmTC_87240.dir\objects1.rsp @C:\Users\SECUCEN\AppData\Local\Temp\nmFEC8.tmp
+
+
+    Feature record: C_FEATURE:1c_function_prototypes
+    Feature record: C_FEATURE:1c_variadic_macros
