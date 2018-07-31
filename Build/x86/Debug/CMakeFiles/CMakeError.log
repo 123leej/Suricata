@@ -1,0 +1,33 @@
+Compiling the CXX compiler identification source file "CMakeCXXCompilerId.cpp" failed.
+Compiler: C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.14.26428/bin/Hostx64/x64/cl.exe 
+Build flags: ${CMAKE_CXX_FLAGS};-m32
+Id flags:  
+
+The output was:
+2
+Microsoft (R) C/C++ ÃÖÀûÈ­ ÄÄÆÄÀÏ·¯ ¹öÀü 19.14.26433(x64)
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+cl : ¸í·ÉÁÙ warning D9002 : ¾Ë ¼ö ¾ø´Â '-m32' ¿É¼ÇÀ» ¹«½ÃÇÕ´Ï´Ù.
+cl : ¸í·ÉÁÙ warning D9024 : ÀÎ½ÄÇÒ ¼ö ¾ø´Â ¼Ò½º ÆÄÀÏ Çü½Ä '${CMAKE_CXX_FLAGS}'ÀÔ´Ï´Ù. °³Ã¼ ÆÄÀÏÀÌ ¼±ÅÃµË´Ï´Ù.
+CMakeCXXCompilerId.cpp
+Microsoft (R) Incremental Linker Version 14.14.26433.0
+Copyright (C) Microsoft Corporation.  All rights reserved.
+
+/out:${CMAKE_CXX_FLAGS}.exe 
+${CMAKE_CXX_FLAGS} 
+CMakeCXXCompilerId.obj 
+LINK : fatal error LNK1181: '${CMAKE_CXX_FLAGS}.obj' ÀÔ·Â ÆÄÀÏÀ» ¿­ ¼ö ¾ø½À´Ï´Ù.
+
+
+Determining if the CXX compiler works failed with the following output:
+Change Dir: C:/Users/SECUCEN/Documents/LJW/Dev/Suricata/Build/x86/Debug/CMakeFiles/CMakeTmp
+
+Run Build Command:"nmake" "/nologo" "cmTC_5f8d6\fast"
+	"C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.14.26428\bin\HostX64\x64\nmake.exe" -f CMakeFiles\cmTC_5f8d6.dir\build.make /nologo -L                  CMakeFiles\cmTC_5f8d6.dir\build
+CMakeFiles\cmTC_5f8d6.dir\flags.make(4) : fatal error U1001: êµ¬ë¬¸ ì˜¤ë¥˜ : ë§¤í¬ë¡œì— '{' ë¬¸ìê°€ ì˜ëª»ë˜ì—ˆìŠµë‹ˆë‹¤.
+Stop.
+NMAKE : fatal error U1077: '"C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.14.26428\bin\HostX64\x64\nmake.exe"' : '0x2' ë°˜í™˜ ì½”ë“œì…ë‹ˆë‹¤.
+Stop.
+
+
