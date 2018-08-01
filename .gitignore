@@ -6,3 +6,11 @@ cmake-build-debug/
 \.DS_Store
 
 CMakeLists\.txt
+
+Build/x64/Debug/CMakeFiles/clion-log\.txt
+
+Build/x64/Release/CMakeFiles/clion-log\.txt
+
+Build/x86/Debug/CMakeFiles/clion-log\.txt
+
+Build/x86/Release/CMakeFiles/clion-log\.txt
