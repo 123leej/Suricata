@@ -25,7 +25,7 @@
 #define PROPRIETARY								0x07		/**< Proprietary message from End-Device?  */
 
 
-#define LORAWAN_MAC_TRIM_MIC(packet,payload)		(((packet)->lorawan_mac_header.macpayload) = (payload>>4))
+#define LORAWAN_MAC_TRIM_MIC(packet,payload)		(((packet)->lorawanmvars.macpayload) = (payload>>32))
 
 typedef struct LorawanMacHdr_ {
 	unsigned int mtype : 3;
@@ -33,6 +33,13 @@ typedef struct LorawanMacHdr_ {
 	unsigned int major : 2;
 } LorawanMacHdr;
 
+typedef struct LorawanMacVars_ {
+	unsigned int macpayload;		//maximum payload size?? 
+	//uint32_t MIC;
+} LorawanMacVars;
 
 static int DecodeLorawanMACPacket(ThreadVars *tv, Packet *p, uint8_t *pkt, uint16_t len);
 void DecodeLorawanMAC(ThreadVars *tv, DecodeThreadVars *dtv, Packet *p, uint8_t *pkt, uint16_t len, PacketQueue *pq);
+
+
+#endif //SRC_DECODE_LORAWAN_MAC_H

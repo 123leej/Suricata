@@ -7,7 +7,7 @@
 #include "decode-events.h"
 #include "defrag.h"
 #include "util-debug.h"
-
+#include "decode-lorawan-Mac.h"
 
 static int DecodeLorawanMACPacket(ThreadVars *tv, Packet *p, uint8_t *pkt, uint16_t len)
 {
@@ -24,7 +24,7 @@ static int DecodeLorawanMACPacket(ThreadVars *tv, Packet *p, uint8_t *pkt, uint1
 	return 0;
 }
 
-void int DecodeLorawanMAC(ThreadVars *tv, DecodeThreadVars *dtv, Packet *p, uint8_t *pkt, uint16_t len, PacketQueue *pq)
+void DecodeLorawanMAC(ThreadVars *tv, DecodeThreadVars *dtv, Packet *p, uint8_t *pkt, uint16_t len, PacketQueue *pq)
 {
 	int ret;
 
@@ -42,7 +42,7 @@ void int DecodeLorawanMAC(ThreadVars *tv, DecodeThreadVars *dtv, Packet *p, uint
 		return;
 	}
 
-	LORAWAN_MAC_TRIM_MIC(p,p->lorawanmvars->payload);
+	LORAWAN_MAC_TRIM_MIC(p,p->lorawanmvars);
 
     switch (p->lorawanmh->mtype) {
 
