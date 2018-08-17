@@ -76,6 +76,17 @@ typedef struct EUI_ {
     (((e1)->deveui == (e2)->deveui &&                             \
       (e1)->appeui == (e2)->appeui ))
 
+#define CLEAR_MAC_PACKET(p) do { \
+    (p)->lorawanmvars.macpayload = 0; \
+    (p)->lorawanmh = NULL; \
+} while (0)
+
+#define CLEAR_FRAME_PACKET(p) do { \
+    (p)->lorawanfvars.fports = 0; \
+    (p)->lorawanfh = NULL; \
+    (p)->lorawanfctl = NULL; \
+} while (0)
+
 
 #define PKT_IS_IPV4(p)      (((p)->ip4h != NULL))
 #define PKT_IS_IPV6(p)      (((p)->ip6h != NULL))
@@ -178,7 +189,7 @@ typedef struct Packet_
     PktVar *pktvar;
 
     LorawanMacHdr *lorawanmh;
-    LorawanMacVars * lorawanmvars;
+    LorawanMacVars *lorawanmvars;
 
     LorawanFrameHdr *lorawanfh;
     LorawanFrameVars *lorawanfvars;
@@ -321,6 +332,10 @@ typedef struct DecodeThreadVars_
         }                                       \
         if ((p)->udph != NULL) {                \
             CLEAR_UDP_PACKET((p));              \
+        }                                       \
+        if ((p)->lorawanmh != NULL) {           \
+            CLEAR_MAC_PACKET((p));              \
+            CLEAR_FRAME_PACKET((p));            \
         }                                       \
         (p)->payload = NULL;                    \
         (p)->payload_len = 0;                   \
