@@ -81,7 +81,7 @@ typedef struct EUI_ {
 #define PKT_IS_IPV6(p)      (((p)->ip6h != NULL))
 #define PKT_IS_TCP(p)       (((p)->tcph != NULL))
 #define PKT_IS_UDP(p)       (((p)->udph != NULL))
-#define PKT_IS_LORAWAN(p)   (((p)->LorawanMacHdr != NULL))
+#define PKT_IS_LORAWAN(p)   (((p)->lorawanmh != NULL))
 #define PKT_IS_TOSERVER(p)  (((p)->UNCONFIRMED_DATA_UP | CONFIRMED_DATA_UP))
 #define PKT_IS_TOMOTE(p)    (((p)->UNCONFIRMED_DATA_DOWN | CONFIRMED_DATA_DOWN))
 
