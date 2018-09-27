@@ -193,7 +193,6 @@ typedef struct Packet_
 
     LorawanFrameHdr *lorawanfh;
     LorawanFrameVars *lorawanfvars;
-    LorawanFrameCtrl *lorawanfctl;
 
     uint8_t *payload;
     uint16_t payload_len;

@@ -18,8 +18,8 @@ static int DecodeLorawanFrameControls(ThreadVars *tv, Packet *p, uint8_t *pkt, u
     }
 
     p->lorawanfh->fctl = (LorawanFrameCtrl *)pkt;
-
-    LORAWAN_FRAME_SET_FOPTS_LEN(p, p->lorafh->fctl.fopts_len);
+    //TODO
+    LORAWAN_FRAME_SET_FOPTS_LEN(p, p->lorawanfh->fctl->fopts_len);
     LORAWAN_FRAME_SET_HEADER_LEN(p, LORAWAN_FRAME_HEADER_LEN_MIN + LORAWAN_FRAME_GET_OPTS(p));
 
     return 0;
@@ -49,13 +49,13 @@ static int DecodeLorawanFramePacket(ThreadVars *tv, Packet *p, uint8_t *pkt, uin
         DECODER_SET_EVENT(p, LORAWAN_PKT_TOO_SMALL);
         return -1;
     }
-    //TODO IF MAC COMMAND FPORT IS 0
+
     if (len < LORAWAN_FRAME_GET_HEADER_LEN(p) + LORAWAN_FRAME_PORT_LEN) {
         DECODER_SET_EVENT(p, LORAWAN_PKT_TOO_SMALL);
         return -1;
     }
 
-    p->lorawanfvars->fports = pkt + LORAWAN_FRAME_GET_HEADER_LEN(p);
+    p->lorawanfvars = (LorawanFrameVars *)(pkt + LORAWAN_FRAME_GET_HEADER_LEN(p));
 
     p->payload = pkt + LORAWAN_FRAME_GET_HEADER_LEN(p) + LORAWAN_FRAME_PORT_LEN;
     p->payload_len = len - LORAWAN_FRAME_GET_HEADER_LEN(p) - LORAWAN_FRAME_PORT_LEN;
@@ -80,11 +80,7 @@ void DecodeLorawanFrame(ThreadVars *tv, DecodeThreadVars *dtv, Packet *p, uint8_
 
     switch (LORAWAN_FRAME_GET_FPORT(p)) {
         case 0x00:
-            if (LORAWAN_FRAME_GET_HEADER_LEN(p) == LORAWAN_FRAME_HEADER_LEN_MIN) {
-                DecodeLorawanMacCommand(tv, p, pkt + LORAWAN_FRAME_HEADER_LEN_MIN, LORAWAN_FRAME_GET_FOPTS_LEN(p));
-            } else {
-                DecodeLorawanMacCommand(tv, p, p->payload, p->payload_len);
-            }
+            SCLogDebug("Lorawan Mac message dose not filtered");
             break;
         case 0x01:
             //TODO IF Some AppLayer IOT Protocols Based on LoRaWan Decoding From Here
