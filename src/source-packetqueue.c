@@ -25,12 +25,12 @@ TmEcode ReceivePacketQueueThreadInit(ThreadVars *, void *, void **);
 void ReceivePacketQueueThreadExitStats(ThreadVars *, void *);
 
 void TmModuleReceivePacketQueueRegister (void) {
-    tmm_modules[TMM_RECEICEPACKETQUQUE].name = "ReceivePacketQueue";
-    tmm_modules[TMM_RECEICEPACKETQUQUE].ThreadInit = ReceivePacketQueuehreadInit;
-    tmm_modules[TMM_RECEICEPACKETQUQUE].Func = ReceivePacketQueue;
-    tmm_modules[TMM_RECEICEPACKETQUQUE].ThreadExitPrintStats = ReceivePacketQueueThreadExitStats;
-    tmm_modules[TMM_RECEICEPACKETQUQUE].ThreadDeinit = NULL;
-    tmm_modules[TMM_RECEICEPACKETQUQUE].RegisterTests = NULL;
+    tmm_modules[TMM_RECEIVEPACKETQUEUE].name = "ReceivePacketQueue";
+    tmm_modules[TMM_RECEIVEPACKETQUEUE].ThreadInit = ReceivePacketQueuehreadInit;
+    tmm_modules[TMM_RECEIVEPACKETQUEUE].Func = ReceivePacketQueue;
+    tmm_modules[TMM_RECEIVEPACKETQUEUE].ThreadExitPrintStats = ReceivePacketQueueThreadExitStats;
+    tmm_modules[TMM_RECEIVEPACKETQUEUE].ThreadDeinit = NULL;
+    tmm_modules[TMM_RECEIVEPACKETQUEUE].RegisterTests = NULL;
 }
 
 TmEcode ReceivePacketQueue(ThreadVars *tv, Packet *p, void *data, PacketQueue *pq, PacketQueue *postpq){
@@ -41,6 +41,9 @@ TmEcode ReceivePacketQueue(ThreadVars *tv, Packet *p, void *data, PacketQueue *p
 	return TM_ECODE_OK;
 }
 
+/*
+ * Receiving Part
+ */
 TmEcode ReceivePacketQueueThreadInit(ThreadVars *tv, void *initdata, void **data){
     
     sigset_t sigs;
@@ -70,6 +73,21 @@ TmEcode ReceivePacketQueueThreadInit(ThreadVars *tv, void *initdata, void **data
     SCReturnInt(TM_ECODE_OK);
 }
 
+TmEcode ReceivePacketQueue(ThreadVars *tv, Packet *p, void *data, PacketQueue *pq, PacketQueue *postpq){
+	PacketQueueThreadVars *ptv = (PacketQueueThreadVars *)data;
+
+	///TODO discuss funcs to be added
+
+	return TM_ECODE_OK;
+}
+
+// receive module stats printing function
 void ReceivePacketQueueThreadExitStats(ThreadVars *tv, void *data){
+    PacketQueueThreadVars *ptv = (PacketQueueThreadVars *)data;
+#ifdef COUNTERS
+    SCLogInfo("(%s) Pkts %" PRIu32 ", Bytes %" PRIu64 ", Errors %" PRIu32 "",
+            tv->name, ptv->pkts, ptv->bytes, ptv->errs);
+#endif
+}
 
 }
