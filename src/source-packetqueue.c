@@ -20,12 +20,21 @@
 #include "conf.h"
 #include "tmqh-packetpool.h"
 
+#define PQ_ACCEPT 0
+#define PQ_DROP 1
+
 TmEcode ReceivePacketQueue(ThreadVars *, Packet *, void *, PacketQueue *, PacketQueue *);
 TmEcode ReceivePacketQueueThreadInit(ThreadVars *, void *, void **);
 void ReceivePacketQueueThreadExitStats(ThreadVars *, void *);
 
 TmEcode DecodePacketQueue(ThreadVars *, Packet *, void *, PacketQueue *, PacketQueue *);
 TmEcode DecodePacketQueueThreadInit(ThreadVars *, void *, void **);
+
+TmEcode VerdictPacketQueue(ThreadVars *, Packet *, void *, PacketQueue *, PacketQueue *);
+TmEcode VerdictPacketQueueThreadInit(ThreadVars *, void *, void **);
+void VerdictPacketQueueThreadExitStats(ThreadVars *, void *);
+TmEcode VerdictPacketQueueThreadDeinit(ThreadVars *, void *);
+
 void TmModuleReceivePacketQueueRegister (void) {
     tmm_modules[TMM_RECEIVEPACKETQUEUE].name = "ReceivePacketQueue";
     tmm_modules[TMM_RECEIVEPACKETQUEUE].ThreadInit = ReceivePacketQueuehreadInit;
@@ -44,9 +53,13 @@ void TmModuleDecodePacketQueueRegister (void) {
     tmm_modules[TMM_DECODEPACKETQUEUE].RegisterTests = NULL;
 }
 
-	///what to do?
-
-	return TM_ECODE_OK;
+void TmModuleVerdictPacketQueueRegister (void) {
+    tmm_modules[TMM_VERDICTPACKETQUEUE].name = "VerdictPacketQueue";
+    tmm_modules[TMM_VERDICTPACKETQUEUE].ThreadInit = VerdictPacketQueueThreadInit;
+    tmm_modules[TMM_VERDICTPACKETQUEUE].Func = VerdictPacketQueue;
+    tmm_modules[TMM_VERDICTPACKETQUEUE].ThreadExitPrintStats = VerdictPacketQueueThreadExitStats;
+    tmm_modules[TMM_VERDICTPACKETQUEUE].ThreadDeinit = VerdictPacketQueueThreadDeinit;
+    tmm_modules[TMM_VERDICTPACKETQUEUE].RegisterTests = NULL;
 }
 
 /*
@@ -137,4 +150,60 @@ TmEcode DecodePacketQueueThreadInit(ThreadVars *tv, void *initdata, void **data)
 
     return TM_ECODE_OK;
 }
-
+
+
+/*
+ * Veridict Part
+ */
+TmEcode VerdictPacketQueueThreadInit(ThreadVars *tv, void *initdata, void **data) {
+	PacketQueueThreadVars *ptv = NULL;
+
+    if ( (ptv = SCMalloc(sizeof(PacketQueueThreadVars))) == NULL)
+        SCReturnInt(TM_ECODE_FAILED);
+    memset(ptv, 0, sizeof(PacketQueueThreadVars));
+
+    *data = (void *)ptv;
+
+    return TM_ECODE_OK;
+}
+
+TmEcode VerdictPacketQueueThreadDeinit(ThreadVars *tv, void *data) {
+	
+	/* will be called after VerdictPacketQueueThreadExitStats 
+	 * NFQ cases needed to call nfq_destory_queue (unbinding queue handle)
+	 * IPFW cases did nothing 
+	 * TODO discuss funcs needed to be added
+	 */
+	return TM_ECODE_OK;
+}
+
+void PacketQueueSetVerdict(PacketQueueThreadVars *ptv, Packet *p) {
+    int ret;
+    uint32_t verdict;
+
+    if (p->action & ACTION_REJECT || p->action & ACTION_REJECT_BOTH ||
+        p->action & ACTION_REJECT_DST || p->action & ACTION_DROP) {
+        verdict = PQ_DROP;
+        ptv->dropped++;
+    } else {
+        verdict = PQ_ACCEPT;
+        ptv->accepted++;
+        //TODO packet accept case 
+    }
+
+}
+
+TmEcode VerdictPacketQueue(ThreadVars *tv, Packet *p, void *data, PacketQueue *pq, PacketQueue *postpq) {
+	PacketQueueThreadVars *ptv = (PacketQueueThreadVars *)data;
+
+	PacketQueueSetVerdict(ptv,p);
+
+	return TM_ECODE_OK;
+}
+
+// verdict module stats printing function
+void VerdictPacketQueueThreadExitStats(ThreadVars *tv, void *data) {
+    PacketQueueThreadVars *ptv = (PacketQueueThreadVars *)data;
+    SCLogInfo("(%s) Pkts accepted %" PRIu32 ", dropped %" PRIu32 "",tv->name, ptv->accepted, ptv->dropped);
+}
+
