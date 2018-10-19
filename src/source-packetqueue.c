@@ -24,13 +24,7 @@ TmEcode ReceivePacketQueue(ThreadVars *, Packet *, void *, PacketQueue *, Packet
 TmEcode ReceivePacketQueueThreadInit(ThreadVars *, void *, void **);
 void ReceivePacketQueueThreadExitStats(ThreadVars *, void *);
 
-
 void TmModuleReceivePacketQueueRegister (void) {
-    /* XXX create a general NFQ setup function */
-    memset(&nfq_g, 0, sizeof(nfq_g));
-    memset(&nfq_t, 0, sizeof(nfq_t));
-    SCMutexInit(&nfq_init_lock, NULL);
-
     tmm_modules[TMM_RECEICEPACKETQUQUE].name = "ReceivePacketQueue";
     tmm_modules[TMM_RECEICEPACKETQUQUE].ThreadInit = ReceivePacketQueuehreadInit;
     tmm_modules[TMM_RECEICEPACKETQUQUE].Func = ReceivePacketQueue;
@@ -40,11 +34,40 @@ void TmModuleReceivePacketQueueRegister (void) {
 }
 
 TmEcode ReceivePacketQueue(ThreadVars *tv, Packet *p, void *data, PacketQueue *pq, PacketQueue *postpq){
+	PacketQueueThreadVars *ptv = (PacketQueueThreadVars *)data;
 
+	///what to do?
+
+	return TM_ECODE_OK;
 }
 
 TmEcode ReceivePacketQueueThreadInit(ThreadVars *tv, void *initdata, void **data){
+    
+    sigset_t sigs;
+    sigfillset(&sigs);
+    pthread_sigmask(SIG_BLOCK, &sigs, NULL);
 
+
+    /* Extract the queue number-initdata from command line */
+    uint16_t queue_num = 0;
+    if ((ByteExtractStringUint16(&queue_num, 10, strlen((char *)initdata),
+                                      (char *)initdata)) < 0)
+    {
+        SCLogError(SC_ERR_INVALID_ARGUMENT, "specified queue number %s is not "
+                                        "valid", (char *)initdata);
+        exit(EXIT_FAILURE);
+    }
+
+    /*setup Threadvars*/
+    PacketQueueThreadVars *ptv = SCMalloc(sizeof(PacketQueueThreadVars));
+    if (ptv == NULL)
+        SCReturnInt(TM_ECODE_FAILED);
+    memset(ptv, 0, sizeof(PacketQueueThreadVars));    
+
+    //pass threadvar pointer
+    *data = (void *)ptv;
+
+    SCReturnInt(TM_ECODE_OK);
 }
 
 void ReceivePacketQueueThreadExitStats(ThreadVars *tv, void *data){
