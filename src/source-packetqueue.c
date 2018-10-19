@@ -24,6 +24,8 @@ TmEcode ReceivePacketQueue(ThreadVars *, Packet *, void *, PacketQueue *, Packet
 TmEcode ReceivePacketQueueThreadInit(ThreadVars *, void *, void **);
 void ReceivePacketQueueThreadExitStats(ThreadVars *, void *);
 
+TmEcode DecodePacketQueue(ThreadVars *, Packet *, void *, PacketQueue *, PacketQueue *);
+TmEcode DecodePacketQueueThreadInit(ThreadVars *, void *, void **);
 void TmModuleReceivePacketQueueRegister (void) {
     tmm_modules[TMM_RECEIVEPACKETQUEUE].name = "ReceivePacketQueue";
     tmm_modules[TMM_RECEIVEPACKETQUEUE].ThreadInit = ReceivePacketQueuehreadInit;
@@ -33,8 +35,14 @@ void TmModuleReceivePacketQueueRegister (void) {
     tmm_modules[TMM_RECEIVEPACKETQUEUE].RegisterTests = NULL;
 }
 
-TmEcode ReceivePacketQueue(ThreadVars *tv, Packet *p, void *data, PacketQueue *pq, PacketQueue *postpq){
-	PacketQueueThreadVars *ptv = (PacketQueueThreadVars *)data;
+void TmModuleDecodePacketQueueRegister (void) {
+    tmm_modules[TMM_DECODEPACKETQUEUE].name = "DecodePacketQueue";
+    tmm_modules[TMM_DECODEPACKETQUEUE].ThreadInit = DecodePacketQueuehreadInit;
+    tmm_modules[TMM_DECODEPACKETQUEUE].Func = DecodePacketQueue;
+    tmm_modules[TMM_DECODEPACKETQUEUE].ThreadExitPrintStats = NULL;
+    tmm_modules[TMM_DECODEPACKETQUEUE].ThreadDeinit = NULL;
+    tmm_modules[TMM_DECODEPACKETQUEUE].RegisterTests = NULL;
+}
 
 	///what to do?
 
@@ -90,4 +98,43 @@ void ReceivePacketQueueThreadExitStats(ThreadVars *tv, void *data){
 #endif
 }
 
+/*
+ * Decoding Part
+ */
+TmEcode DecodePacketQueue(ThreadVars *tv, Packet *p, void *data, PacketQueue *pq, PacketQueue *postpq){
+    DecodeThreadVars *dtv = (DecodeThreadVars *)data;
+
+    //Counter update
+    SCPerfCounterIncr(dtv->counter_pkts, tv->sc_perf_pca);
+    SCPerfCounterAddUI64(dtv->counter_bytes, tv->sc_perf_pca, p->pktlen);
+    SCPerfCounterAddUI64(dtv->counter_avg_pkt_size, tv->sc_perf_pca, p->pktlen);
+    SCPerfCounterSetUI64(dtv->counter_max_pkt_size, tv->sc_perf_pca, p->pktlen);
+    SCPerfCounterAddDouble(dtv->counter_bytes_per_sec, tv->sc_perf_pca, p->pktlen);
+    SCPerfCounterAddDouble(dtv->counter_mbit_per_sec, tv->sc_perf_pca,
+                           (p->pktlen * 8)/1000000.0);
+    //process LoRaWAN packets
+    if (PKT_IS_LORAWAN(p)) {
+        SCLogDebug("Lorawan packet");
+        DecodeLorawanMAC(tv, dtv, p, p->pkt, p->pktlen, pq);
+    } else {
+        SCLogDebug("packet unsupported by lorawan, first byte: %02x", *p->pkt);
+    }
+
+    return TM_ECODE_OK;
 }
+
+//initialize decode thread variables
+TmEcode DecodePacketQueueThreadInit(ThreadVars *tv, void *initdata, void **data){
+    DecodeThreadVars *dtv = NULL;
+    dtv = DecodeThreadVarsAlloc();
+
+    if (dtv == NULL)
+        SCReturnInt(TM_ECODE_FAILED);
+
+    DecodeRegisterPerfCounters(dtv, tv);
+
+    *data = (void *)dtv;
+
+    return TM_ECODE_OK;
+}
+
