@@ -574,6 +574,9 @@ int main(int argc, char **argv)
     TmModuleReceiveNFQRegister();
     TmModuleVerdictNFQRegister();
     TmModuleDecodeNFQRegister();
+    TmModuleReceivePacketQueueRegister();
+    TmModuleVerdictPacketQueueRegister();
+    TmModuleDecodePacketQueueRegister();
     TmModuleDetectRegister();
     TmModuleAlertFastLogRegister();
     TmModuleAlertDebugLogRegister();
