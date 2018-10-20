@@ -158,10 +158,15 @@ void DecodeRegisterPerfCounters(DecodeThreadVars *dtv, ThreadVars *tv)
                                                SC_PERF_TYPE_UINT64, "NULL");
     dtv->counter_udp = SCPerfTVRegisterCounter("decoder.udp", tv,
                                                SC_PERF_TYPE_UINT64, "NULL");
+    dtv->counter_lorawan_dataframe = SCPerfTVRegisterCounter("decoder.lorawandataframe", tv,
+                                                              SC_PERF_TYPE_UINT64, "NULL");
+    dtv->counter_lorawan_mac = SCPerfTVRegisterCounter("decoder.lorawanmac", tv,
+                                                        SC_PERF_TYPE_UINT64, "NULL");
     dtv->counter_avg_pkt_size = SCPerfTVRegisterAvgCounter("decoder.avg_pkt_size", tv,
                                                            SC_PERF_TYPE_DOUBLE, "NULL");
     dtv->counter_max_pkt_size = SCPerfTVRegisterMaxCounter("decoder.max_pkt_size", tv,
                                                            SC_PERF_TYPE_UINT64, "NULL");
+
 
     dtv->counter_defrag_ipv4_fragments =
         SCPerfTVRegisterCounter("defrag.ipv4.fragments", tv,
