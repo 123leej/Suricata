@@ -19,6 +19,7 @@
 #include "util-privs.h"
 #include "conf.h"
 #include "tmqh-packetpool.h"
+#include "signal.h"
 
 #define PQ_ACCEPT 0
 #define PQ_DROP 1
@@ -185,9 +186,14 @@ void PacketQueueSetVerdict(PacketQueueThreadVars *ptv, Packet *p) {
         p->action & ACTION_REJECT_DST || p->action & ACTION_DROP) {
         verdict = PQ_DROP;
         ptv->dropped++;
+	signal(SIGUSR2, dropped);
+	raise(SIGUSR2); /* SIGUSR2 is raised */
+                        /* dropped() is called */
     } else {
         verdict = PQ_ACCEPT;
         ptv->accepted++;
+	signal(SIGUSR2, accepted); /* SIGUSR2 is raised */
+	raise(SIGUSR2);            /* accepted() is called */
         //TODO packet accept case 
     }
 
