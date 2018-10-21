@@ -88,7 +88,7 @@ typedef struct DetectTagDataEntry_ {
 
 typedef struct DetectTagDataEntryList_ {
     DetectTagDataEntry *header_entry;
-    Address addr;                       /**< Var used to store dst or src addr */
+//    Address addr;                       /**< Var used to store dst or src addr */
     uint8_t ipv;                        /**< IP Version */
     SCMutex lock;
 }DetectTagDataEntryList;

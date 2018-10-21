@@ -12,6 +12,7 @@
 #include "tm-queuehandlers.h"
 #include "tm-modules.h"
 #include "action-globals.h"
+#include "source-packetqueue.h"
 
 #include "util-debug.h"
 #include "util-error.h"
@@ -38,7 +39,7 @@ TmEcode VerdictPacketQueueThreadDeinit(ThreadVars *, void *);
 
 void TmModuleReceivePacketQueueRegister (void) {
     tmm_modules[TMM_RECEIVEPACKETQUEUE].name = "ReceivePacketQueue";
-    tmm_modules[TMM_RECEIVEPACKETQUEUE].ThreadInit = ReceivePacketQueuehreadInit;
+    tmm_modules[TMM_RECEIVEPACKETQUEUE].ThreadInit = ReceivePacketQueueThreadInit;
     tmm_modules[TMM_RECEIVEPACKETQUEUE].Func = ReceivePacketQueue;
     tmm_modules[TMM_RECEIVEPACKETQUEUE].ThreadExitPrintStats = ReceivePacketQueueThreadExitStats;
     tmm_modules[TMM_RECEIVEPACKETQUEUE].ThreadDeinit = NULL;
@@ -47,7 +48,7 @@ void TmModuleReceivePacketQueueRegister (void) {
 
 void TmModuleDecodePacketQueueRegister (void) {
     tmm_modules[TMM_DECODEPACKETQUEUE].name = "DecodePacketQueue";
-    tmm_modules[TMM_DECODEPACKETQUEUE].ThreadInit = DecodePacketQueuehreadInit;
+    tmm_modules[TMM_DECODEPACKETQUEUE].ThreadInit = DecodePacketQueueThreadInit;
     tmm_modules[TMM_DECODEPACKETQUEUE].Func = DecodePacketQueue;
     tmm_modules[TMM_DECODEPACKETQUEUE].ThreadExitPrintStats = NULL;
     tmm_modules[TMM_DECODEPACKETQUEUE].ThreadDeinit = NULL;
