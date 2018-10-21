@@ -130,15 +130,6 @@ typedef struct Flow_
 {
     /* flow "header", used for hashing and flow lookup. Static after init,
      * so safe to look at without lock */
-    Address src, dst;
-    union {
-        Port sp;        /**< tcp/udp source port */
-        uint8_t type;   /**< icmp type */
-    };
-    union {
-        Port dp;        /**< tcp/udp destination port */
-        uint8_t code;   /**< icmp code */
-    };
     uint8_t proto;
     uint8_t recursion_level;
 
