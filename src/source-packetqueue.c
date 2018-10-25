@@ -187,14 +187,11 @@ void PacketQueueSetVerdict(PacketQueueThreadVars *ptv, Packet *p) {
         p->action & ACTION_REJECT_DST || p->action & ACTION_DROP) {
         verdict = PQ_DROP;
         ptv->dropped++;
-	signal(SIGUSR2, dropped);
-	raise(SIGUSR2); /* SIGUSR2 is raised */
-                        /* dropped() is called */
+	kill(p->pid,SIGUSR1); /* send SIGUSR1 to HTTP Server */
     } else {
         verdict = PQ_ACCEPT;
         ptv->accepted++;
-	signal(SIGUSR2, accepted); /* SIGUSR2 is raised */
-	raise(SIGUSR2);            /* accepted() is called */
+	kill(p->pid,SIGUSR2); /* send SIGUSR2 to HTTP Server */
         //TODO packet accept case 
     }
 
