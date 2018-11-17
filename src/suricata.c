@@ -149,12 +149,6 @@ intmax_t max_pending_packets;
 /** set caps or not */
 int sc_set_caps;
 
-int RunmodeIsUnittests(void) {
-    if (run_mode == MODE_UNITTEST)
-        return 1;
-
-    return 0;
-}
 
 static void SignalHandlerSigint(/*@unused@*/ int sig) {
     sigint_count = 1;
@@ -164,29 +158,8 @@ static void SignalHandlerSigterm(/*@unused@*/ int sig) {
     sigterm_count = 1;
     suricata_ctl_flags |= SURICATA_KILL;
 }
-#if 0
-static void SignalHandlerSighup(/*@unused@*/ int sig) {
-    sighup_count = 1;
-    suricata_ctl_flags |= SURICATA_SIGHUP;
-}
-#endif
 
-#ifdef DBG_MEM_ALLOC
-#ifndef _GLOBAL_MEM_
-#define _GLOBAL_MEM_
-/* This counter doesn't complain realloc's(), it's gives
- * an aproximation for the startup */
-size_t global_mem = 0;
-#ifdef DBG_MEM_ALLOC_SKIP_STARTUP
-uint8_t print_mem_flag = 0;
-#else
-uint8_t print_mem_flag = 1;
-#endif
-#endif
-#endif
-
-static void
-SignalHandlerSetup(int sig, void (*handler)())
+static void SignalHandlerSetup(int sig, void (*handler)())
 {
     struct sigaction action;
 
@@ -272,28 +245,16 @@ void usage(const char *progname)
     printf("%s %s\n", PROG_NAME, PROG_VER);
     printf("USAGE: %s\n\n", progname);
     printf("\t-c <path>                    : path to configuration file\n");
-    printf("\t-i <dev or ip>               : run in pcap live mode\n");
-    printf("\t-r <path>                    : run in pcap file/offline mode\n");
     printf("\t-q <qid>                     : run in inline nfqueue mode\n");
-    printf("\t-s <path>                    : path to signature file (optional)\n");
-    printf("\t-l <dir>                     : default log directory\n");
-    printf("\t-D                           : run as daemon\n");
-
-    printf("\t--pidfile <file>             : write pid to this file (only for daemon mode)\n");
-    printf("\t--init-errors-fatal          : enable fatal failure on signature init error\n");
-    printf("\t--dump-config                : show the running configuration\n");
-
-    printf("\t--erf-in <path>              : process an ERF file\n");
-
-    printf("\n");
+     printf("\n");
     printf("\nTo run the engine with default configuration on "
             "interface eth0 with signature file \"signatures.rules\", run the "
             "command as:\n\n%s -c suricata.yaml -s signatures.rules -i eth0 \n\n",
             progname);
 }
 
-int main(int argc, char **argv)
-{
+
+int main(int argc, char **argv) {
     int opt;
     char *pcap_file = NULL;
     char pcap_dev[128];
@@ -302,9 +263,7 @@ int main(int argc, char **argv)
     char *nfq_id = NULL;
     char *conf_filename = NULL;
     char *pid_filename = NULL;
-#ifdef UNITTESTS
-    char *regex_arg = NULL;
-#endif
+
     int dump_config = 0;
     int list_unittests = 0;
     int daemon = 0;
@@ -331,21 +290,21 @@ int main(int argc, char **argv)
     ConfInit();
 
     struct option long_opts[] = {
-        {"dump-config", 0, &dump_config, 1},
-        {"pfring-int",  required_argument, 0, 0},
-        {"pfring-cluster-id",  required_argument, 0, 0},
-        {"pfring-cluster-type",  required_argument, 0, 0},
-        {"pcap-buffer-size", required_argument, 0, 0},
-        {"unittest-filter", required_argument, 0, 'U'},
-        {"list-unittests", 0, &list_unittests, 1},
-        {"pidfile", required_argument, 0, 0},
-        {"init-errors-fatal", 0, 0, 0},
-        {"fatal-unittests", 0, 0, 0},
-        {"user", required_argument, 0, 0},
-        {"group", required_argument, 0, 0},
-        {"erf-in", required_argument, 0, 0},
-        {"dag", required_argument, 0, 0},
-        {NULL, 0, NULL, 0}
+            {"dump-config",         0,                 &dump_config,    1},
+            {"pfring-int",          required_argument, 0,               0},
+            {"pfring-cluster-id",   required_argument, 0,               0},
+            {"pfring-cluster-type", required_argument, 0,               0},
+            {"pcap-buffer-size",    required_argument, 0,               0},
+            {"unittest-filter",     required_argument, 0,               'U'},
+            {"list-unittests",      0,                 &list_unittests, 1},
+            {"pidfile",             required_argument, 0,               0},
+            {"init-errors-fatal",   0,                 0,               0},
+            {"fatal-unittests",     0,                 0,               0},
+            {"user",                required_argument, 0,               0},
+            {"group",               required_argument, 0,               0},
+            {"erf-in",              required_argument, 0,               0},
+            {"dag",                 required_argument, 0,               0},
+            {NULL,                  0, NULL,                            0}
     };
 
     /* getopt_long stores the option index here. */
@@ -355,135 +314,23 @@ int main(int argc, char **argv)
 
     while ((opt = getopt_long(argc, argv, short_opts, long_opts, &option_index)) != -1) {
         switch (opt) {
-        case 0:
-            if(strcmp((long_opts[option_index]).name , "pfring-int") == 0){
-                SCLogError(SC_ERR_NO_PF_RING,"PF_RING not enabled. Make sure to pass --enable-pfring to configure when building.");
-                exit(EXIT_FAILURE);
-            }
-            else if(strcmp((long_opts[option_index]).name , "pfring-cluster-id") == 0){
-                SCLogError(SC_ERR_NO_PF_RING,"PF_RING not enabled. Make sure to pass --enable-pfring to configure when building.");
-                exit(EXIT_FAILURE);
-            }
-            else if(strcmp((long_opts[option_index]).name , "pfring-cluster-type") == 0){
-                SCLogError(SC_ERR_NO_PF_RING,"PF_RING not enabled. Make sure to pass --enable-pfring to configure when building.");
-                exit(EXIT_FAILURE);
-            }
-            else if(strcmp((long_opts[option_index]).name, "init-errors-fatal") == 0) {
-                if (ConfSet("engine.init_failure_fatal", "1", 0) != 1) {
-                    fprintf(stderr, "ERROR: Failed to set engine init_failure_fatal.\n");
-                    exit(EXIT_FAILURE);
+            case 'c':
+                conf_filename = optarg;
+                break;
+            case 'q':
+                if (run_mode == MODE_UNKNOWN) {
+                    run_mode = MODE_NFQ;
+                } else {
+                    SCLogError(SC_ERR_MULTIPLE_RUN_MODE, "more than one run mode "
+                                                         "has been specified");
+                    usage(argv[0]);
+                    exit(EXIT_SUCCESS);
                 }
-            }
-            else if(strcmp((long_opts[option_index]).name, "list-unittests") == 0) {
-                fprintf(stderr, "ERROR: Unit tests not enabled. Make sure to pass --enable-unittests to configure when building.\n");
-                exit(EXIT_FAILURE);
-            }
-            else if(strcmp((long_opts[option_index]).name, "pidfile") == 0) {
-                pid_filename = optarg;
-            }
-            else if(strcmp((long_opts[option_index]).name, "fatal-unittests") == 0) {
-                fprintf(stderr, "ERROR: Unit tests not enabled. Make sure to pass --enable-unittests to configure when building.\n");
-                exit(EXIT_FAILURE);
-            }
-            else if(strcmp((long_opts[option_index]).name, "user") == 0) {
-                SCLogError(SC_ERR_LIBCAP_NG_REQUIRED, "libcap-ng is required to"
-                        " drop privileges, but it was not compiled into Suricata.");
-                exit(EXIT_FAILURE);
-            }
-            else if(strcmp((long_opts[option_index]).name, "group") == 0) {
-                SCLogError(SC_ERR_LIBCAP_NG_REQUIRED, "libcap-ng is required to"
-                        " drop privileges, but it was not compiled into Suricata.");
-                exit(EXIT_FAILURE);
-            }
-            else if (strcmp((long_opts[option_index]).name, "erf-in") == 0) {
-                run_mode = MODE_ERF_FILE;
-                erf_file = optarg;
-            }
-			else if (strcmp((long_opts[option_index]).name, "dag") == 0) {
-				SCLogError(SC_ERR_DAG_REQUIRED, "libdag and a DAG card are required"
-						" to receieve packets using --dag.");
-				exit(EXIT_FAILURE);
-			}
-            else if(strcmp((long_opts[option_index]).name, "pcap-buffer-size") == 0) {
-                SCLogError(SC_ERR_NO_PCAP_SET_BUFFER_SIZE, "The version of libpcap you have"
-                        " doesn't support setting buffer size.");
-            }
-            break;
-        case 'c':
-            conf_filename = optarg;
-            break;
-        case 'D':
-            daemon = 1;
-            break;
-        case 'h':
-            usage(argv[0]);
-            exit(EXIT_SUCCESS);
-            break;
-        case 'i':
-            if (run_mode == MODE_UNKNOWN) {
-                run_mode = MODE_PCAP_DEV;
-            } else {
-                SCLogError(SC_ERR_MULTIPLE_RUN_MODE, "more than one run mode "
-                                                     "has been specified");
+                nfq_id = optarg;
+                break;
+            default:
                 usage(argv[0]);
                 exit(EXIT_FAILURE);
-            }
-			memset(pcap_dev, 0, sizeof(pcap_dev));
-			      strncpy(pcap_dev, optarg, ((strlen(optarg) < sizeof(pcap_dev)) ? (strlen(optarg)) : (sizeof(pcap_dev)-1)));
-            break;
-        case 'l':
-            if (ConfSet("default-log-dir", optarg, 0) != 1) {
-                fprintf(stderr, "ERROR: Failed to set log directory.\n");
-                exit(EXIT_FAILURE);
-            }
-            if (stat(optarg, &buf) != 0) {
-                SCLogError(SC_ERR_LOGDIR_CMDLINE, "The logging directory \"%s\" "
-                        "upplied at the commandline (-l %s) doesn't "
-                        "exist. Shutting down the engine.", optarg, optarg);
-                exit(EXIT_FAILURE);
-            }
-            break;
-        case 'q':
-            if (run_mode == MODE_UNKNOWN) {
-                run_mode = MODE_NFQ;
-            } else {
-                SCLogError(SC_ERR_MULTIPLE_RUN_MODE, "more than one run mode "
-                                                     "has been specified");
-                usage(argv[0]);
-                exit(EXIT_SUCCESS);
-            }
-            nfq_id = optarg;
-            break;
-        case 'd':
-            SCLogError(SC_ERR_IPFW_NOSUPPORT,"IPFW not enabled. Make sure to pass --enable-ipfw to configure when building.");
-            exit(EXIT_FAILURE);
-            break;
-        case 'r':
-            if (run_mode == MODE_UNKNOWN) {
-                run_mode = MODE_PCAP_FILE;
-            } else {
-                SCLogError(SC_ERR_MULTIPLE_RUN_MODE, "more than one run mode "
-                                                     "has been specified");
-                usage(argv[0]);
-                exit(EXIT_SUCCESS);
-            }
-            pcap_file = optarg;
-            break;
-        case 's':
-            sig_file = optarg;
-            break;
-        case 'u':
-            fprintf(stderr, "ERROR: Unit tests not enabled. Make sure to pass --enable-unittests to configure when building.\n");
-            exit(EXIT_FAILURE);
-            break;
-        case 'U':
-            break;
-        case 'V':
-            printf("\nThis is %s version %s\n\n", PROG_NAME, PROG_VER);
-            exit(EXIT_SUCCESS);
-        default:
-            usage(argv[0]);
-            exit(EXIT_FAILURE);
         }
     }
     SetBpfString(optind, argv);
@@ -504,7 +351,7 @@ int main(int argc, char **argv)
             /* Error already displayed. */
             exit(EXIT_FAILURE);
         }
-    } else if (run_mode != MODE_UNITTEST){
+    } else if (run_mode != MODE_UNITTEST) {
         SCLogError(SC_ERR_OPENING_FILE, "Configuration file has not been provided");
         usage(argv[0]);
         exit(EXIT_FAILURE);
@@ -521,8 +368,8 @@ int main(int argc, char **argv)
         log_dir = DEFAULT_LOG_DIR;
     if (stat(log_dir, &buf) != 0) {
         SCLogError(SC_ERR_LOGDIR_CONFIG, "The logging directory \"%s\" "
-                    "supplied by %s (default-log-dir) doesn't exist. "
-                    "Shutting down the engine", log_dir, conf_filename);
+                                         "supplied by %s (default-log-dir) doesn't exist. "
+                                         "Shutting down the engine", log_dir, conf_filename);
         exit(EXIT_FAILURE);
     }
 
@@ -530,7 +377,8 @@ int main(int argc, char **argv)
      * back on a sane default. */
     if (ConfGetInt("max-pending-packets", &max_pending_packets) != 1)
         max_pending_packets = DEFAULT_MAX_PENDING_PACKETS;
-    SCLogDebug("Max pending packets set to %"PRIiMAX, max_pending_packets);
+    SCLogDebug("Max pending packets set to %"
+                       PRIiMAX, max_pending_packets);
 
     /* Since our config is now loaded we can finish configurating the
      * logging module. */
@@ -547,11 +395,11 @@ int main(int argc, char **argv)
 
     /* create table for O(1) lowercase conversion lookup */
     uint8_t c = 0;
-    for ( ; c < 255; c++) {
-       if (c >= 'A' && c <= 'Z')
-           g_u8_lowercasetable[c] = (c + ('a' - 'A'));
-       else
-           g_u8_lowercasetable[c] = c;
+    for (; c < 255; c++) {
+        if (c >= 'A' && c <= 'Z')
+            g_u8_lowercasetable[c] = (c + ('a' - 'A'));
+        else
+            g_u8_lowercasetable[c] = c;
     }
 
     /* hardcoded initialization code */
@@ -563,9 +411,6 @@ int main(int argc, char **argv)
     SigParsePrepare();
     //PatternMatchPrepare(mpm_ctx, MPM_B2G);
     SCPerfInitCounterApi();
-#ifdef PROFILING
-    SCProfilingInit();
-#endif /* PROFILING */
 
     SCReputationInitCtx();
 
@@ -616,7 +461,7 @@ int main(int argc, char **argv)
     } else {
         if (pid_filename != NULL) {
             SCLogError(SC_ERR_PIDFILE_DAEMON, "The pidfile file option applies "
-                    "only to the daemon modes");
+                                              "only to the daemon modes");
             pid_filename = NULL;
             exit(EXIT_FAILURE);
         }
@@ -626,7 +471,7 @@ int main(int argc, char **argv)
     SignalHandlerSetup(SIGINT, SignalHandlerSigint);
     SignalHandlerSetup(SIGTERM, SignalHandlerSigterm);
 
-	/* SIGHUP is not implemnetd on WIN32 */
+    /* SIGHUP is not implemnetd on WIN32 */
     //SignalHandlerSetup(SIGHUP, SignalHandlerSighup);
     /* Get the suricata user ID to given user ID */
     if (do_setuid == TRUE) {
@@ -636,7 +481,7 @@ int main(int argc, char **argv)
         }
 
         sc_set_caps = TRUE;
-    /* Get the suricata group ID to given group ID */
+        /* Get the suricata group ID to given group ID */
     } else if (do_setgid == TRUE) {
         if (SCGetGroupID(group_name, &groupid) != 0) {
             SCLogError(SC_ERR_GID_FAILED, "failed in getting group ID");
@@ -646,7 +491,9 @@ int main(int argc, char **argv)
         sc_set_caps = TRUE;
     }
     /* pre allocate packets */
-    SCLogDebug("preallocating packets... packet size %" PRIuMAX "", (uintmax_t)sizeof(Packet));
+    SCLogDebug("preallocating packets... packet size %"
+                       PRIuMAX
+                       "", (uintmax_t) sizeof(Packet));
     int i = 0;
     for (i = 0; i < max_pending_packets; i++) {
         /* XXX pkt alloc function */
@@ -659,8 +506,12 @@ int main(int argc, char **argv)
 
         PacketPoolStorePacket(p);
     }
-    SCLogInfo("preallocated %"PRIiMAX" packets. Total memory %"PRIuMAX"",
-        max_pending_packets, (uintmax_t)(max_pending_packets*sizeof(Packet)));
+    SCLogInfo("preallocated %"
+                      PRIiMAX
+                      " packets. Total memory %"
+                      PRIuMAX
+                      "",
+              max_pending_packets, (uintmax_t) (max_pending_packets * sizeof(Packet)));
 
     FlowInitConfig(FLOW_VERBOSE);
 
@@ -680,13 +531,8 @@ int main(int argc, char **argv)
     }
 
 
-#ifdef PROFILING
-    SCProfilingInitRuleCounters(de_ctx);
-#endif /* PROFILING */
-
-
     AppLayerHtpRegisterExtraCallbacks();
-    SCThresholdConfInitContext(de_ctx,NULL);
+    SCThresholdConfInitContext(de_ctx, NULL);
 
     struct timeval start_time;
     memset(&start_time, 0, sizeof(start_time));
@@ -697,8 +543,7 @@ int main(int argc, char **argv)
     /* run the selected runmode */
     if (run_mode == MODE_NFQ) {
         RunModeIpsNFQAuto(de_ctx, nfq_id);
-    }
-    else {
+    } else {
         SCLogError(SC_ERR_UNKNOWN_RUN_MODE, "Unknown runtime mode. Aborting");
         exit(EXIT_FAILURE);
     }
@@ -718,18 +563,14 @@ int main(int argc, char **argv)
     /* Wait till all the threads have been initialized */
     if (TmThreadWaitOnThreadInit() == TM_ECODE_FAILED) {
         SCLogError(SC_ERR_INITIALIZATION, "Engine initialization failed, "
-                   "aborting...");
+                                          "aborting...");
         exit(EXIT_FAILURE);
     }
     /* Un-pause all the paused threads */
     TmThreadContinueThreads();
 
-#ifdef DBG_MEM_ALLOC
-    SCLogInfo("Memory used at startup: %"PRIdMAX, (intmax_t)global_mem);
-#ifdef DBG_MEM_ALLOC_SKIP_STARTUP
-    print_mem_flag = 1;
-#endif
-#endif
+
+    //send init finish
 
     while(1) {
         if (suricata_ctl_flags != 0) {
@@ -782,12 +623,6 @@ int main(int argc, char **argv)
     HTPFreeConfig();
     HTPAtExitPrintStats();
 
-#ifdef DBG_MEM_ALLOC
-    SCLogInfo("Total memory used (without SCFree()): %"PRIdMAX, (intmax_t)global_mem);
-#ifdef DBG_MEM_ALLOC_SKIP_STARTUP
-    print_mem_flag = 0;
-#endif
-#endif
 
     SCPidfileRemove(pid_filename);
 
@@ -804,10 +639,5 @@ int main(int argc, char **argv)
     OutputDeregisterAll();
     TimeDeinit();
 
-#ifdef PROFILING
-    if (profiling_rules_enabled)
-        SCProfilingDump(stdout);
-    SCProfilingDestroy();
-#endif
     exit(EXIT_SUCCESS);
 }
