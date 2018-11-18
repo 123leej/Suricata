@@ -60,12 +60,11 @@
 #include "tm-modules.h"
 #include "tm-threads.h"
 
-#include "tmqh-flow.h"
-
 #include "conf.h"
 #include "conf-yaml-loader.h"
 
 #include "alert-fastlog.h"
+#include "alert-unified-log.h"
 #include "alert-unified-log.h"
 #include "alert-unified-alert.h"
 #include "alert-unified2-alert.h"
